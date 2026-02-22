@@ -20,26 +20,12 @@
         .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; width: 100%; gap: 4px; }
         .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; transition: 0.2s; white-space: nowrap; }
         .tab-trigger.active { color: #fff; background: var(--grove-leaf); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .badge { display: none; position: absolute; top: 6px; right: 15%; width: 4px; height: 4px; background: var(--gold); border-radius: 50%; }
         .tab-content { display: none; padding-top: 5px; }
         .tab-content.active { display: block; animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .vault-zone { position: relative; overflow: hidden; background: rgba(255,255,255,0.02); border-radius: 1.5rem; }
-        .broadcast-ticker { background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(255,255,255,0.05); overflow: hidden; white-space: nowrap; }
-        .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 10px 0; }
-        @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
-        .givr-modal { display: none; position: fixed; inset: 0; background: rgba(6, 26, 20, 0.98); backdrop-filter: blur(8px); z-index: 1000; align-items: center; justify-content: center; padding: 1.5rem; }
     </style>
 </head>
 <body class="max-w-md mx-auto">
-
-    <div id="direct-msg-box" class="hidden fixed top-4 inset-x-4 z-[1100] bg-gold p-4 rounded-2xl shadow-2xl border-2 border-white animate-bounce">
-        <div class="flex justify-between items-start">
-            <p class="text-[8px] font-black uppercase text-slate-900 tracking-widest">Notice</p>
-            <button onclick="dismissPopup()" class="text-slate-900 font-bold">✕</button>
-        </div>
-        <p id="msg-text" class="text-xs font-black text-slate-900 mt-1 leading-tight"></p>
-    </div>
 
     <header class="bg-white rounded-[2rem] p-5 mb-4 border border-slate-100 shadow-sm">
         <div class="flex justify-between items-center mb-5">
@@ -50,11 +36,11 @@
                     <p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase tracking-widest italic">ACTIVE</p>
                 </div>
             </div>
-            <button onclick="logout()" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-3 py-1.5 rounded-lg active:scale-95 transition-transform">Exit</button>
+            <button onclick="logout()" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-3 py-1.5 rounded-lg active:scale-95">Exit</button>
         </div>
 
         <div class="flex gap-3">
-            <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100" onclick="toggleModal('sowModal', true)">
+            <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Seed Base</p>
                 <div class="text-sm font-black text-slate-900 tracking-tighter" id="s-seed">GH₵0.00</div>
             </div>
@@ -66,20 +52,10 @@
     </header>
 
     <main class="terminal-parent">
-        <div id="frozen-lock" class="hidden absolute inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center text-center">
-            <span class="text-2xl mb-2">❄️</span>
-            <p class="text-[10px] font-black uppercase text-white tracking-widest">System Frozen</p>
-        </div>
-
-        <div class="broadcast-ticker">
-            <div class="ticker-move" id="mission-ticker">GIVERS NEVER LACK • LOADING ORCHARD • SYNCING NODES...</div>
-        </div>
-
         <div class="p-4">
             <nav class="nav-pill mb-6">
                 <div id="btn-orchard" class="tab-trigger active" onclick="openTab('t-orchard')">Orchard</div>
                 <div id="btn-vault" class="tab-trigger" onclick="openTab('t-vault')">Vault</div>
-                <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">Comm <div id="comm-badge" class="badge"></div></div>
                 <div id="btn-ledger" class="tab-trigger" onclick="openTab('t-ledger')">Ledger</div>
             </nav>
 
@@ -88,65 +64,44 @@
             </section>
             
             <section id="t-vault" class="tab-content">
-                <div class="vault-zone p-8 text-center border border-emerald-900/10">
-                    <div class="relative z-10">
-                        <p class="text-[8px] font-black text-emerald-500/40 uppercase mb-1 italic">Claim Vaulted</p>
-                        <h2 id="v-balance" class="text-3xl font-black italic text-white mb-6 tracking-tighter">GH₵0.00</h2>
-                        <div class="space-y-3 max-w-[200px] mx-auto">
-                            <button onclick="vaultAll()" id="vault-btn" class="w-full py-4 bg-emerald-600 text-white font-black uppercase text-[9px] rounded-xl shadow-lg active:scale-95">Vault Grace</button>
-                            <button onclick="toggleModal('withdrawModal', true)" id="with-btn" class="w-full py-4 bg-white text-emerald-950 font-black uppercase text-[9px] rounded-xl active:scale-95">Withdraw</button>
-                        </div>
-                        <p class="text-[7px] text-slate-500 uppercase mt-4">2% service charge applied on withdrawal</p>
+                <div class="p-8 text-center bg-white/5 rounded-3xl">
+                    <p class="text-[8px] font-black text-emerald-500/40 uppercase mb-1">Claim Vaulted</p>
+                    <h2 id="v-balance" class="text-3xl font-black italic text-white mb-6">GH₵0.00</h2>
+                    <div class="space-y-3">
+                        <button onclick="vaultAll()" class="w-full py-4 bg-emerald-600 text-white font-black uppercase text-[9px] rounded-xl">Vault Grace</button>
+                        <button onclick="toggleModal('withdrawModal', true)" class="w-full py-4 bg-white text-emerald-950 font-black uppercase text-[9px] rounded-xl">Withdraw</button>
                     </div>
                 </div>
             </section>
 
-            <section id="t-comm" class="tab-content">
-                <div id="comm-list" class="space-y-2"></div>
-            </section>
-            
             <section id="t-ledger" class="tab-content">
-                <div id="ledger-content" class="bg-black/20 rounded-2xl border border-white/5 divide-y divide-white/5 overflow-hidden"></div>
+                <div id="ledger-content" class="bg-black/20 rounded-2xl divide-y divide-white/5 overflow-hidden"></div>
             </section>
         </div>
     </main>
 
-    <div id="withdrawModal" class="givr-modal">
-        <div class="max-w-xs w-full bg-white p-8 rounded-[2.5rem] text-slate-950">
-            <p class="text-[9px] font-black uppercase mb-1 text-emerald-900">Withdrawal</p>
-            <p class="text-[7px] font-bold text-slate-400 mb-6 uppercase">Available for Withdrawal: <span id="m-avail" class="text-emerald-600">GH₵0.00</span></p>
-            <div class="space-y-4">
-                <input type="number" id="w-amount" placeholder="Amount" class="w-full p-4 bg-slate-50 rounded-xl font-bold text-sm outline-none" oninput="calcCharge()">
-                <div class="p-3 bg-emerald-50 rounded-xl text-center"><p id="charge-info" class="text-[7px] font-black text-emerald-700 uppercase">Fee (2%): GH₵0.00 | Net: GH₵0.00</p></div>
-                <input type="tel" id="w-phone" placeholder="MOMO Number" class="w-full p-4 bg-slate-50 rounded-xl font-bold text-sm outline-none">
-                <button onclick="requestWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase">Authorize Payout</button>
-                <button onclick="toggleModal('withdrawModal', false)" class="w-full text-[8px] font-black text-slate-300 uppercase py-2">Return</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="sowModal" class="givr-modal">
-        <div class="max-w-xs w-full bg-white p-8 rounded-[2.5rem] text-center">
-            <p class="text-[10px] font-black uppercase text-emerald-600 mb-1 italic">Extend Seed</p>
-            <p id="range-hint" class="text-[7px] font-bold text-slate-400 mb-6 uppercase"></p>
-            <input type="number" id="sow-amount" placeholder="Amount" class="w-full p-4 bg-slate-50 rounded-xl font-bold mb-4 outline-none">
-            <button onclick="processSow()" class="w-full py-4 bg-slate-900 text-white font-black rounded-xl text-[10px] uppercase">Commit</button>
-            <button onclick="toggleModal('sowModal', false)" class="w-full text-[8px] font-black text-slate-300 uppercase py-4">Close</button>
+    <div id="withdrawModal" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-xs text-slate-900">
+            <p class="text-[10px] font-black uppercase mb-1">Withdrawal</p>
+            <p class="text-[8px] font-bold text-slate-400 mb-4">Available: <span id="m-avail">GH₵0.00</span></p>
+            <input type="number" id="w-amount" placeholder="Amount" class="w-full p-4 bg-slate-100 rounded-xl mb-2 font-bold outline-none" oninput="calcCharge()">
+            <p id="charge-info" class="text-[7px] font-black text-emerald-600 uppercase mb-4 text-center">Fee (2%): GH₵0.00</p>
+            <button onclick="requestWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase">Authorize</button>
+            <button onclick="toggleModal('withdrawModal', false)" class="w-full text-[8px] font-black text-slate-400 uppercase py-4">Cancel</button>
         </div>
     </div>
 
     <script>
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
-
         const _gv = supabase.createClient(SB_URL, SB_KEY);
+
         let userObj = null, capturableSum = 0, vaultedSum = 0, timers = {};
 
         async function init() {
             const { data: { user } } = await _gv.auth.getUser();
             if(!user) return window.location.href = "index.html";
             userObj = user;
-            document.getElementById('user-display').innerText = user.email.split('@')[0].toUpperCase();
             sync();
             _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
             setInterval(updateTimers, 1000);
@@ -158,6 +113,8 @@
                 const card = document.getElementById(`card-${id}`);
                 if (!element) return;
                 const remaining = Math.max(0, Math.floor((timers[id] - Date.now()) / 1000));
+                
+                // FORCE REMOVAL IF EXPIRED
                 if (remaining <= 0) {
                     if(card) card.remove();
                     delete timers[id];
@@ -170,25 +127,26 @@
         }
 
         async function sync() {
-            const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).single();
-            if(profile) {
-                document.getElementById('frozen-lock').style.display = profile.is_suspended ? 'flex' : 'none';
-                document.getElementById('range-hint').innerText = `Range: GH₵${profile.current_range_min || 0} - GH₵${profile.current_range_max || '∞'}`;
-            }
-
             const { data: ledger } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
             const myLedger = (ledger || []).filter(l => l.user_id === userObj.id);
-            const myClaims = myLedger.filter(l => l.entry_type === 'gift_received').map(c => c.description.split(': ')[1]?.split(' ')[0]);
+            const myClaims = myLedger.filter(l => l.entry_type === 'gift_received').map(c => c.description.split(': ')[1]?.trim());
 
             let totalRec = 0, totalVault = 0, totalWith = 0, seedAmt = 0;
+
             myLedger.forEach(l => {
                 const val = parseFloat(l.amount) || 0;
                 const desc = (l.description || "").toLowerCase();
-                // FIX: Look for 'seed' anywhere in the description to capture activation seeds
-                if (l.entry_type === 'seed' || desc.includes('seed')) seedAmt += val;
-                if(l.entry_type === 'gift_received') totalRec += val;
-                if(desc === 'vault transfer') totalVault += val;
-                if(l.entry_type === 'withdrawal') totalWith += Math.abs(val);
+                const type = (l.entry_type || "").toLowerCase();
+
+                // AGGRESSIVE SEED SEARCH: Check type OR description
+                if (type === 'seed' || desc.includes('seed') || desc.includes('activation')) {
+                    // Only count as seed base if it's NOT a "vault transfer" (which is internal)
+                    if(!desc.includes('vault transfer')) seedAmt += val;
+                }
+                
+                if(type === 'gift_received') totalRec += val;
+                if(desc.includes('vault transfer')) totalVault += val;
+                if(type === 'withdrawal') totalWith += Math.abs(val);
             });
 
             capturableSum = Math.max(0, totalRec - totalVault);
@@ -199,13 +157,19 @@
             document.getElementById('v-balance').innerText = `GH₵${vaultedSum.toFixed(2)}`;
             document.getElementById('m-avail').innerText = `GH₵${vaultedSum.toFixed(2)}`;
 
+            // ORCHARD FILTERING
             const { data: broadcasts } = await _gv.from('ledger').select('*').eq('entry_type', 'gift_sent');
+            const now = Date.now();
+
             const avail = (broadcasts || []).filter(b => {
                 const parts = b.description.split(' | ');
                 const isWither = parts[0] === 'Wither Grace';
                 const expiry = parts[1] ? new Date(parts[1]).getTime() : null;
-                // HARD FILTER: Only show if not claimed and (not wither OR expiry is in the future)
-                return !myClaims.includes(b.id.toString()) && (!isWither || (expiry && expiry > Date.now()));
+                const alreadyClaimed = myClaims.includes(b.id.toString());
+                
+                // KILL SWITCH: Do not show if claimed OR if expired
+                const isExpired = isWither && expiry && expiry < now;
+                return !alreadyClaimed && !isExpired;
             });
             
             document.getElementById('orchard-list').innerHTML = avail.map(g => {
@@ -221,7 +185,7 @@
                             ${parts[0]} ${isWither ? `• <span id="timer-${g.id}">--:--</span>` : ''}
                         </p>
                     </div>
-                    <button id="btn-${g.id}" onclick="claim('${g.id}', ${g.amount})" class="px-5 py-2 bg-emerald-600 text-white font-black text-[8px] uppercase rounded-lg active:scale-90">Capture</button>
+                    <button onclick="claim('${g.id}', ${g.amount})" class="px-5 py-2 bg-emerald-600 text-white font-black text-[8px] uppercase rounded-lg active:scale-90">Capture</button>
                 </div>`;
             }).join('') || '<p class="text-center py-20 opacity-10 text-[9px] font-black uppercase">Orchard Resting</p>';
 
@@ -234,8 +198,6 @@
         }
 
         async function claim(id, amt) {
-            const btn = document.getElementById(`btn-${id}`);
-            if(btn) btn.disabled = true;
             await _gv.from('ledger').insert([{ user_id: userObj.id, amount: amt, entry_type: 'gift_received', description: `Claim: ${id}` }]);
             sync();
         }
@@ -248,7 +210,7 @@
 
         async function requestWithdrawal() {
             const amt = parseFloat(document.getElementById('w-amount').value);
-            if (!amt || amt > vaultedSum) return alert("Verify Balance");
+            if (!amt || amt > vaultedSum) return alert("Insufficient Balance");
             await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -amt, entry_type: 'withdrawal', description: `Momo Payout (2% Fee Ded.)` }]);
             toggleModal('withdrawModal', false); sync();
         }
@@ -256,18 +218,16 @@
         function calcCharge() {
             const amt = parseFloat(document.getElementById('w-amount').value) || 0;
             const fee = amt * 0.02;
-            document.getElementById('charge-info').innerText = `Fee (2%): GH₵${fee.toFixed(2)} | Net: GH₵${(amt - fee).toFixed(2)}`;
+            document.getElementById('charge-info').innerText = `Fee (2%): GH₵${fee.toFixed(2)}`;
         }
 
+        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
         function openTab(id) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
         }
-
-        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
-        function dismissPopup() { document.getElementById('direct-msg-box').classList.add('hidden'); }
         async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
         
         init();
