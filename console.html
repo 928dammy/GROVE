@@ -199,7 +199,20 @@
 
         async function toggleSuspend(id, status) { await _gv.from('profiles').update({ is_suspended: !status }).eq('id', id); sync(); }
         async function expelNode(id) { if(confirm("Expel?")) { await _gv.from('profiles').delete().eq('id', id); sync(); } }
-        async function broadcastToNode(id) { const m = prompt("Message:"); if(m) { await _gv.from('profiles').update({ direct_message: m }).eq('id', id); alert("Sent."); } }
+        
+        // SYNC FIX: Sending to 'messages' table for User Dashboard Comm tab
+        async function broadcastToNode(id) { 
+            const m = prompt("Directive Message:"); 
+            if(m) { 
+                await _gv.from('messages').insert([{ 
+                    receiver_id: id, 
+                    sender_name: "SYSTEM", 
+                    content: m 
+                }]); 
+                alert("Directive Dispatched."); 
+            } 
+        }
+
         async function updateRange() {
             const email = document.getElementById('targetEmail').value;
             const min = document.getElementById('minRange').value;
