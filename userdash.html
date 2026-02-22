@@ -65,7 +65,7 @@
             
             <section id="t-vault" class="tab-content">
                 <div class="p-8 text-center bg-white/5 rounded-3xl">
-                    <p class="text-[8px] font-black text-emerald-500/40 uppercase mb-1">Claim Vaulted</p>
+                    <p class="text-[8px] font-black text-emerald-500/40 uppercase mb-1 italic">Claim Vaulted</p>
                     <h2 id="v-balance" class="text-3xl font-black italic text-white mb-6">GH₵0.00</h2>
                     <div class="space-y-3">
                         <button onclick="vaultAll()" class="w-full py-4 bg-emerald-600 text-white font-black uppercase text-[9px] rounded-xl">Vault Grace</button>
@@ -111,10 +111,19 @@
         function updateTimers() {
             const now = Date.now();
             Object.keys(timers).forEach(id => {
-                const el = document.getElementById(`timer-${id}`), card = document.getElementById(`card-${id}`);
+                const el = document.getElementById(`timer-${id}`), btn = document.getElementById(`btn-${id}`);
                 const rem = Math.max(0, Math.floor((timers[id] - now) / 1000));
-                if (rem <= 0) { if(card) card.remove(); delete timers[id]; }
-                else if(el) el.innerText = `${Math.floor(rem/60)}:${(rem%60).toString().padStart(2,'0')}`;
+                
+                if (rem <= 0) {
+                    if(el) el.innerText = "EXPIRED";
+                    if(btn && !btn.classList.contains('bg-slate-700')) {
+                        btn.innerText = "MISSED";
+                        btn.onclick = null;
+                        btn.className = "px-5 py-2 bg-slate-700 text-slate-400 font-black text-[8px] uppercase rounded-lg cursor-not-allowed";
+                    }
+                } else if(el) {
+                    el.innerText = `${Math.floor(rem/60)}:${(rem%60).toString().padStart(2,'0')}`;
+                }
             });
         }
 
@@ -124,7 +133,6 @@
             const myClaims = myLedger.filter(l => l.entry_type === 'gift_received').map(c => c.description.split(': ')[1]?.trim());
 
             let totalRec = 0, totalVault = 0, totalWith = 0, seedAmt = 0;
-
             myLedger.forEach(l => {
                 const val = parseFloat(l.amount) || 0, desc = (l.description || "").toLowerCase(), type = (l.entry_type || "").toLowerCase();
                 if ((type === 'seed' || desc.includes('seed')) && !desc.includes('vault transfer')) seedAmt += val;
@@ -136,32 +144,36 @@
             capturableSum = Math.max(0, totalRec - totalVault);
             vaultedSum = Math.max(0, totalVault - totalWith);
             
-            ['s-seed','s-reclaim','v-balance','m-avail'].forEach((id, i) => {
-                const vals = [seedAmt, capturableSum, vaultedSum, vaultedSum];
-                document.getElementById(id).innerText = `GH₵${vals[i].toFixed(2)}`;
-            });
+            document.getElementById('s-seed').innerText = `GH₵${seedAmt.toFixed(2)}`;
+            document.getElementById('s-reclaim').innerText = `GH₵${capturableSum.toFixed(2)}`;
+            document.getElementById('v-balance').innerText = `GH₵${vaultedSum.toFixed(2)}`;
+            document.getElementById('m-avail').innerText = `GH₵${vaultedSum.toFixed(2)}`;
 
             const { data: broadcasts } = await _gv.from('ledger').select('*').eq('entry_type', 'gift_sent');
             const now = Date.now();
 
-            const avail = (broadcasts || []).filter(b => {
-                const parts = b.description.split(' | '), isWither = parts[0] === 'Wither Grace';
-                const expiry = parts[1] ? new Date(parts[1]).getTime() : null;
-                return !myClaims.includes(b.id.toString()) && (!isWither || (expiry && expiry > now));
-            });
+            const avail = (broadcasts || []).filter(b => !myClaims.includes(b.id.toString()));
             
             document.getElementById('orchard-list').innerHTML = avail.map(g => {
                 const parts = g.description.split(' | '), isWither = parts[0] === 'Wither Grace';
-                if (isWither && parts[1]) timers[g.id] = new Date(parts[1]).getTime();
+                const expiry = parts[1] ? new Date(parts[1]).getTime() : null;
+                const isExpired = isWither && expiry && expiry <= now;
+                
+                if (isWither && parts[1]) timers[g.id] = expiry;
+
                 return `
-                <div id="card-${g.id}" class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5">
+                <div id="card-${g.id}" class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5 ${isExpired ? 'opacity-50' : ''}">
                     <div>
                         <p class="text-sm font-black text-emerald-400 italic">GH₵${parseFloat(g.amount).toFixed(2)}</p>
                         <p class="text-[7px] font-black uppercase tracking-widest ${isWither ? 'text-rose-400' : 'text-emerald-500/40'}">
-                            ${parts[0]} ${isWither ? `• <span id="timer-${g.id}">--:--</span>` : ''}
+                            ${parts[0]} ${isWither ? `• <span id="timer-${g.id}">${isExpired ? 'EXPIRED' : '--:--'}</span>` : ''}
                         </p>
                     </div>
-                    <button onclick="claim('${g.id}', ${g.amount})" class="px-5 py-2 bg-emerald-600 text-white font-black text-[8px] uppercase rounded-lg active:scale-90">Capture</button>
+                    <button id="btn-${g.id}" 
+                        onclick="${isExpired ? '' : `claim('${g.id}', ${g.amount})`}" 
+                        class="px-5 py-2 ${isExpired ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 text-white active:scale-90'} font-black text-[8px] uppercase rounded-lg">
+                        ${isExpired ? 'MISSED' : 'Capture'}
+                    </button>
                 </div>`;
             }).join('') || '<p class="text-center py-20 opacity-10 text-[9px] font-black uppercase tracking-widest">Orchard Resting</p>';
 
@@ -174,6 +186,8 @@
         }
 
         async function claim(id, amt) {
+            const btn = document.getElementById(`btn-${id}`);
+            if(btn.innerText === "MISSED") return; // Safety check
             await _gv.from('ledger').insert([{ user_id: userObj.id, amount: amt, entry_type: 'gift_received', description: `Claim: ${id}` }]);
             sync();
         }
