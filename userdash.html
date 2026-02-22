@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GROVE | Userqq Terminal</title>
+    <title>GIVR | Grove Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -163,14 +163,13 @@
             Object.keys(timers).forEach(id => {
                 const element = document.getElementById(`timer-${id}`);
                 const btn = document.getElementById(`btn-${id}`);
+                const card = document.getElementById(`card-${id}`);
                 if (!element) return;
 
                 const remaining = Math.max(0, Math.floor((timers[id] - Date.now()) / 1000));
                 if (remaining <= 0) {
-                    element.innerText = "EXPIRED";
-                    element.classList.replace('text-gold', 'text-rose-500');
-                    if(btn) btn.disabled = true;
-                    if(btn) btn.style.opacity = "0.2";
+                    // Item expired - hide it
+                    if(card) card.style.display = 'none';
                 } else {
                     const mins = Math.floor(remaining / 60);
                     const secs = remaining % 60;
@@ -206,9 +205,12 @@
             
             myLedger.forEach(l => {
                 const val = parseFloat(l.amount) || 0;
-                if (l.description.includes('Seed')) seedAmt += val;
+                const desc = l.description.toLowerCase();
+                
+                // Fix: Case-insensitive check for Seed base
+                if (desc.includes('seed')) seedAmt += val;
                 if(l.entry_type === 'gift_received') totalRec += val;
-                if(l.description === 'Vault Transfer') totalVault += val;
+                if(desc === 'vault transfer') totalVault += val;
                 if(l.entry_type === 'withdrawal') totalWith += Math.abs(val);
             });
             capturableSum = Math.max(0, totalRec - totalVault);
@@ -221,7 +223,16 @@
 
             // Orchard Logic
             const { data: broadcasts } = await _gv.from('ledger').select('*').eq('entry_type', 'gift_sent');
-            const avail = (broadcasts || []).filter(b => !myClaims.includes(b.id.toString()));
+            
+            // Fix: Filter out expired broadcasts and already claimed items
+            const avail = (broadcasts || []).filter(b => {
+                const parts = b.description.split(' | ');
+                const isWither = parts[0] === 'Wither Grace';
+                const expiry = parts[1] ? new Date(parts[1]).getTime() : null;
+                const isExpired = isWither && expiry && expiry < Date.now();
+                
+                return !myClaims.includes(b.id.toString()) && !isExpired;
+            });
             
             document.getElementById('orchard-list').innerHTML = avail.map(g => {
                 const parts = g.description.split(' | ');
@@ -233,7 +244,7 @@
                 }
 
                 return `
-                <div class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5">
+                <div id="card-${g.id}" class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5">
                     <div>
                         <p class="text-sm font-black text-emerald-400 italic">GH₵${parseFloat(g.amount).toFixed(2)}</p>
                         <p class="text-[7px] font-black uppercase tracking-widest ${isWither ? 'text-rose-400' : 'text-emerald-500/40'}">
