@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GIVR | Sovereign Admin</title>
+    <title>GROVE | Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,6 +23,7 @@
         .btn-msg { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); color: #60a5fa; }
         .btn-freeze { background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); color: #fbbf24; }
         .btn-expel { background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); color: #fb7185; }
+        .btn-reset { background: rgba(244, 63, 94, 0.2); border: 1px solid #fb7185; color: #fb7185; font-size: 8px; font-weight: 900; padding: 4px 12px; border-radius: 8px; }
     </style>
 </head>
 <body class="bg-slate-950">
@@ -30,8 +31,11 @@
     <header class="p-6 sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/5">
         <div class="flex justify-between items-center mb-4">
             <div>
-                <h1 class="text-xl font-black italic tracking-tighter text-emerald-500">GIVR.admin</h1>
-                <p id="health-indicator" class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Sovereign Control</p>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-xl font-black italic tracking-tighter text-emerald-500">.admin</h1>
+                    <button onclick="systemReset()" class="btn-reset">PURGE🔥</button>
+                </div>
+                <p id="health-indicator" class="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Console Control</p>
             </div>
             <div class="text-right">
                 <p id="stat-pool" class="text-lg font-black text-emerald-400 italic">GH₵0.00</p>
@@ -88,10 +92,18 @@
         </section>
 
         <section id="harvest" class="tab-content">
-            <div class="auth-card p-6">
+            <div class="auth-card p-6 mb-4">
                 <h3 class="text-sm font-black uppercase text-emerald-500 mb-4 italic">Dispatch Grace</h3>
                 <input type="number" id="distAmount" placeholder="Amount (GHS)" class="input-box mb-4">
-                <button onclick="broadcastGrace()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-xs uppercase">Release to Orchard</button>
+                <button onclick="broadcastGrace()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-xs uppercase">Release Stable Grace</button>
+            </div>
+            <div class="auth-card p-6 border-rose-500/20">
+                <h3 class="text-sm font-black uppercase text-rose-500 mb-4 italic">Deploy Wither Grace</h3>
+                <div class="space-y-3">
+                    <input type="number" id="wAmount" placeholder="Amount (GHS)" class="input-box">
+                    <input type="number" id="wMins" placeholder="Lifespan (Minutes)" class="input-box">
+                    <button onclick="broadcastWither()" class="w-full py-4 bg-rose-600 text-white font-black rounded-2xl text-xs uppercase">Unleash Wither Grace</button>
+                </div>
             </div>
         </section>
 
@@ -110,7 +122,6 @@
     </nav>
 
     <script>
-        // --- API FALLBACK LOGIC ---
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
 
@@ -123,6 +134,13 @@
             evt.currentTarget.classList.add('active');
         }
 
+        async function systemReset() {
+            if(!confirm("DANGER: This will wipe all ledger data and reset the Grace Pool to 0. Continue?")) return;
+            const { error } = await _gv.rpc('reset_system');
+            if(error) alert("SQL Function 'reset_system' not found in Supabase.");
+            else { alert("System Reset Complete."); sync(); }
+        }
+
         async function sync() {
             const { data: nodes } = await _gv.from('profiles').select('*');
             const { data: ledger } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
@@ -130,19 +148,16 @@
 
             let globalSeeded = 0, globalWithdrawn = 0, totalVaulted = 0;
             const nodeDetails = {};
-
             nodes?.forEach(n => { nodeDetails[n.id] = { seeded: 0, vaulted: 0, withdrawn: 0, email: n.email }; });
 
             ledger?.forEach(l => {
                 const val = parseFloat(l.amount) || 0;
                 const desc = l.description.toLowerCase();
-
-                if(l.entry_type === 'seed' && desc !== 'vault transfer') globalSeeded += val;
+                if(l.entry_type === 'seed' && !desc.includes('vault transfer')) globalSeeded += val;
                 if(l.entry_type === 'withdrawal') globalWithdrawn += Math.abs(val);
-
                 if (l.user_id && nodeDetails[l.user_id]) {
-                    if (l.entry_type === 'seed' && desc !== 'vault transfer') nodeDetails[l.user_id].seeded += val;
-                    if (desc === 'vault transfer') nodeDetails[l.user_id].vaulted += val;
+                    if (l.entry_type === 'seed' && !desc.includes('vault transfer')) nodeDetails[l.user_id].seeded += val;
+                    if (desc.includes('vault transfer')) nodeDetails[l.user_id].vaulted += val;
                     if (l.entry_type === 'withdrawal') nodeDetails[l.user_id].withdrawn += Math.abs(val);
                 }
             });
@@ -158,51 +173,14 @@
             document.getElementById('stat-nodes').innerText = nodes?.length || 0;
 
             const health = document.getElementById('health-indicator');
-            if (grovePool < totalVaulted) {
-                health.innerText = "DEFICIT WARNING"; health.classList.add('text-rose-500', 'animate-pulse');
-            } else {
-                health.innerText = "HEALTHY BALANCE"; health.classList.remove('text-rose-500', 'animate-pulse');
-            }
+            if (grovePool < totalVaulted) { health.innerText = "DEFICIT WARNING"; health.classList.add('text-rose-500', 'animate-pulse'); }
+            else { health.innerText = "HEALTHY BALANCE"; health.classList.remove('text-rose-500', 'animate-pulse'); }
 
             document.getElementById('nodeList').innerHTML = nodes?.map(n => {
                 const stats = nodeDetails[n.id];
                 const currentInVault = Math.max(0, stats.vaulted - stats.withdrawn);
-
-                return `
-                <div class="auth-card p-4">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <p class="text-[10px] font-black uppercase ${n.is_suspended ? 'text-rose-400' : 'text-emerald-400'}">${n.email.split('@')[0]}</p>
-                            <p class="text-[7px] text-slate-500 uppercase tracking-widest mt-1">${n.email}</p>
-                        </div>
-                        <div class="text-right">
-                             <div class="w-1.5 h-1.5 rounded-full ${n.is_suspended ? 'bg-rose-500' : 'bg-emerald-500'} animate-pulse ml-auto mb-1"></div>
-                             <p class="text-[8px] font-black text-white">RANGE: ${n.current_range_min || 0}-${n.current_range_max || 0}</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-2 mb-4 bg-black/20 p-3 rounded-xl border border-white/5">
-                        <div class="text-center">
-                            <p class="text-[6px] text-slate-500 uppercase font-bold">Seeded</p>
-                            <p class="text-[9px] font-black">₵${stats.seeded.toFixed(0)}</p>
-                        </div>
-                        <div class="text-center border-x border-white/5">
-                            <p class="text-[6px] text-emerald-500 uppercase font-bold">In Vault</p>
-                            <p class="text-[9px] font-black text-emerald-400">₵${currentInVault.toFixed(2)}</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-[6px] text-rose-500 uppercase font-bold">Taken</p>
-                            <p class="text-[9px] font-black text-rose-400">₵${stats.withdrawn.toFixed(0)}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="broadcastToNode('${n.id}')" class="btn-action btn-msg">Message</button>
-                        <button onclick="toggleSuspend('${n.id}', ${n.is_suspended})" class="btn-action btn-freeze">${n.is_suspended ? 'Release' : 'Suspend'}</button>
-                        <button onclick="expelNode('${n.id}')" class="btn-action btn-expel">Expel</button>
-                    </div>
-                </div>
-            `;}).join('');
+                return `<div class="auth-card p-4"><div class="flex justify-between items-start mb-4"><div><p class="text-[10px] font-black uppercase ${n.is_suspended ? 'text-rose-400' : 'text-emerald-400'}">${n.email.split('@')[0]}</p><p class="text-[7px] text-slate-500 uppercase tracking-widest mt-1">${n.email}</p></div><div class="text-right"><div class="w-1.5 h-1.5 rounded-full ${n.is_suspended ? 'bg-rose-500' : 'bg-emerald-500'} animate-pulse ml-auto mb-1"></div><p class="text-[8px] font-black text-white uppercase">RANGE: ${n.current_range_min || 0}-${n.current_range_max || 0}</p></div></div><div class="grid grid-cols-3 gap-2 mb-4 bg-black/20 p-3 rounded-xl border border-white/5"><div class="text-center"><p class="text-[6px] text-slate-500 uppercase font-bold">Seeded</p><p class="text-[9px] font-black">₵${stats.seeded.toFixed(0)}</p></div><div class="text-center border-x border-white/5"><p class="text-[6px] text-emerald-500 uppercase font-bold">In Vault</p><p class="text-[9px] font-black text-emerald-400">₵${currentInVault.toFixed(2)}</p></div><div class="text-center"><p class="text-[6px] text-rose-500 uppercase font-bold">Taken</p><p class="text-[9px] font-black text-rose-400">₵${stats.withdrawn.toFixed(0)}</p></div></div><div class="grid grid-cols-3 gap-2"><button onclick="broadcastToNode('${n.id}')" class="btn-action btn-msg">Message</button><button onclick="toggleSuspend('${n.id}', ${n.is_suspended})" class="btn-action btn-freeze">${n.is_suspended ? 'Release' : 'Suspend'}</button><button onclick="expelNode('${n.id}')" class="btn-action btn-expel">Expel</button></div></div>`;
+            }).join('');
 
             document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 15).map(l => {
                 const user = nodes?.find(p => p.id === l.user_id)?.email.split('@')[0] || 'SYS';
@@ -210,12 +188,18 @@
             }).join('');
         }
 
+        async function broadcastWither() {
+            const amt = document.getElementById('wAmount').value;
+            const mins = document.getElementById('wMins').value;
+            if(!amt || !mins) return;
+            const expiry = new Date(Date.now() + mins * 60000).toISOString();
+            await _gv.from('ledger').insert([{ amount: parseFloat(amt), entry_type: 'gift_sent', description: `Wither Grace | ${expiry}` }]);
+            sync(); alert("Wither Grace Unleashed.");
+        }
+
         async function toggleSuspend(id, status) { await _gv.from('profiles').update({ is_suspended: !status }).eq('id', id); sync(); }
         async function expelNode(id) { if(confirm("Expel?")) { await _gv.from('profiles').delete().eq('id', id); sync(); } }
-        async function broadcastToNode(id) { 
-            const m = prompt("Message:"); 
-            if(m) { await _gv.from('profiles').update({ direct_message: m }).eq('id', id); alert("Sent."); } 
-        }
+        async function broadcastToNode(id) { const m = prompt("Message:"); if(m) { await _gv.from('profiles').update({ direct_message: m }).eq('id', id); alert("Sent."); } }
         async function updateRange() {
             const email = document.getElementById('targetEmail').value;
             const min = document.getElementById('minRange').value;
