@@ -126,6 +126,7 @@
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
 
         const _gv = supabase.createClient(SB_URL, SB_KEY);
+        let adminUser = null;
 
         function openTab(evt, name) {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -142,6 +143,9 @@
         }
 
         async function sync() {
+            const { data: { user } } = await _gv.auth.getUser();
+            adminUser = user;
+            
             const { data: nodes } = await _gv.from('profiles').select('*');
             const { data: ledger } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
             const { data: missions } = await _gv.from('settled_needs').select('*');
@@ -153,12 +157,13 @@
             ledger?.forEach(l => {
                 const val = parseFloat(l.amount) || 0;
                 const desc = l.description.toLowerCase();
-                if(l.entry_type === 'seed' && !desc.includes('vault transfer')) globalSeeded += val;
-                if(l.entry_type === 'withdrawal') globalWithdrawn += Math.abs(val);
+                const type = l.entry_type.toLowerCase();
+                if(type === 'seed' && !desc.includes('vault transfer')) globalSeeded += val;
+                if(type === 'withdrawal') globalWithdrawn += Math.abs(val);
                 if (l.user_id && nodeDetails[l.user_id]) {
-                    if (l.entry_type === 'seed' && !desc.includes('vault transfer')) nodeDetails[l.user_id].seeded += val;
+                    if (type === 'seed' && !desc.includes('vault transfer')) nodeDetails[l.user_id].seeded += val;
                     if (desc.includes('vault transfer')) nodeDetails[l.user_id].vaulted += val;
-                    if (l.entry_type === 'withdrawal') nodeDetails[l.user_id].withdrawn += Math.abs(val);
+                    if (type === 'withdrawal') nodeDetails[l.user_id].withdrawn += Math.abs(val);
                 }
             });
 
@@ -184,7 +189,7 @@
 
             document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 15).map(l => {
                 const user = nodes?.find(p => p.id === l.user_id)?.email.split('@')[0] || 'SYS';
-                return `<div class="p-4 flex justify-between items-center text-[10px]"><div><p class="font-black uppercase text-slate-500 text-[8px]">${user}</p><p class="italic text-emerald-500 text-[9px]">${l.entry_type}</p></div><p class="font-black ${l.amount < 0 ? 'text-rose-500' : 'text-white'}">GH₵${Math.abs(l.amount).toFixed(2)}</p></div>`;
+                return `<div class="p-4 flex justify-between items-center text-[10px]"><div><p class="font-black uppercase text-slate-500 text-[8px]">${user}</p><p class="italic text-emerald-500 text-[9px]">${l.entry_type}</p><p class="text-[6px] text-slate-600 uppercase">${l.description || ''}</p></div><p class="font-black ${l.amount < 0 ? 'text-rose-500' : 'text-white'}">GH₵${Math.abs(l.amount).toFixed(2)}</p></div>`;
             }).join('');
         }
 
@@ -200,15 +205,10 @@
         async function toggleSuspend(id, status) { await _gv.from('profiles').update({ is_suspended: !status }).eq('id', id); sync(); }
         async function expelNode(id) { if(confirm("Expel?")) { await _gv.from('profiles').delete().eq('id', id); sync(); } }
         
-        // SYNC FIX: Sending to 'messages' table for User Dashboard Comm tab
         async function broadcastToNode(id) { 
             const m = prompt("Directive Message:"); 
             if(m) { 
-                await _gv.from('messages').insert([{ 
-                    receiver_id: id, 
-                    sender_name: "SYSTEM", 
-                    content: m 
-                }]); 
+                await _gv.from('messages').insert([{ receiver_id: id, sender_name: "SYSTEM", content: m }]); 
                 alert("Directive Dispatched."); 
             } 
         }
@@ -220,12 +220,31 @@
             await _gv.from('profiles').update({ current_range_min: parseFloat(min), current_range_max: parseFloat(max) }).eq('email', email);
             sync(); alert("Updated.");
         }
+
         async function postMission() {
             const t = document.getElementById('mTitle').value;
             const c = document.getElementById('mCost').value;
+            if(!t || !c) return;
+
+            // 1. Post to Ticker
             await _gv.from('settled_needs').insert([{ description: t, cost_to_settle: parseFloat(c) }]);
-            sync(); alert("Mission Live.");
+            
+            // 2. Post to Ledger for history and pool deduction
+            if(adminUser) {
+                await _gv.from('ledger').insert([{ 
+                    user_id: adminUser.id, 
+                    amount: -parseFloat(c), 
+                    entry_type: 'mission_spend', 
+                    description: `Mission: ${t}` 
+                }]);
+            }
+            
+            sync(); 
+            alert("Mission Live & Logged.");
+            document.getElementById('mTitle').value = '';
+            document.getElementById('mCost').value = '';
         }
+
         async function broadcastGrace() {
             const amt = document.getElementById('distAmount').value;
             if (!amt) return;
