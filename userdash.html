@@ -12,9 +12,9 @@
         :root { --emerald: #10b981; --grove-deep: #061a14; --grove-leaf: #064e3b; --gold: #fbbf24; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; margin: 0; overflow-x: hidden; color: #1e293b; }
         
-        /* 1. SEED SCATTERED GROWING ANIMATION (HEADER) */
-        .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
-        .seed-scatter { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+        /* RESTORED HEADER SEEDS */
+        .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .seed-scatter { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; border-radius: 2rem; }
         .seed { position: absolute; background: var(--emerald); border-radius: 50%; opacity: 0; animation: scatterGrow 4s infinite ease-out; }
         @keyframes scatterGrow {
             0% { transform: translateY(20px) scale(0); opacity: 0; }
@@ -22,41 +22,72 @@
             100% { transform: translateY(-40px) scale(1.5); opacity: 0; }
         }
 
-        /* 2. CEDIS FALLING ANIMATION (VAULT) */
-        .vault-bg { position: relative; background: linear-gradient(to bottom, #061a14, #064e3b); border-radius: 2.5rem; overflow: hidden; min-height: 300px; display: flex; align-items: center; justify-content: center; }
-        .cedis-rain { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
-        .cedi-symbol { position: absolute; color: rgba(16, 185, 129, 0.15); font-weight: 900; font-size: 24px; animation: fall linear infinite; }
-        @keyframes fall {
-            from { transform: translateY(-50px) rotate(0deg); opacity: 1; }
-            to { transform: translateY(350px) rotate(360deg); opacity: 0; }
-        }
+        /* FIXED FLOATING MENU */
+        .node-menu { position: fixed; top: 75px; right: 2rem; width: 180px; background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 15px 35px rgba(0,0,0,0.15); display: none; z-index: 100; overflow: hidden; }
+        .node-menu.active { display: block; animation: menuFade 0.2s ease-out; }
+        @keyframes menuFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .menu-item { width: 100%; padding: 14px 20px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #f8fafc; color: #64748b; cursor: pointer; }
+        .menu-item:active { background: #f8fafc; color: var(--emerald); }
 
-        /* 3. ORCHARD EMPTY STATE ANIMATION */
-        .empty-orchard { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; text-align: center; }
-        .sprout-icon { width: 40px; height: 40px; background: var(--grove-leaf); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); margin-bottom: 1.5rem; position: relative; animation: growPulse 3s infinite ease-in-out; }
-        .sprout-icon::after { content: ''; position: absolute; width: 20px; height: 20px; background: var(--emerald); border-radius: 50% 50% 50% 0; top: -5px; right: -5px; }
-        @keyframes growPulse { 0%, 100% { transform: rotate(-45deg) scale(1); opacity: 0.4; } 50% { transform: rotate(-45deg) scale(1.1); opacity: 0.8; } }
-
-        /* TERMINAL DESIGN */
-        .terminal-parent { background: var(--grove-deep); border-radius: 2rem; color: #ecfdf5; min-height: 540px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; }
-        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; width: 100%; gap: 4px; }
-        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; transition: 0.2s; white-space: nowrap; }
-        .tab-trigger.active { color: #fff; background: var(--grove-leaf); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .tab-content { display: none; padding-top: 5px; }
-        .tab-content.active { display: block; animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* SOUL & TICKER */
+        /* SOUL CORE */
         .soul-container { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; z-index: 10; }
         .soul-core { width: 6px; height: 6px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 10px var(--emerald); animation: breathe 3s infinite; }
         .soul-aura { position: absolute; inset: 0; border: 1.5px solid rgba(16, 185, 129, 0.2); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; animation: morph 8s infinite linear; }
         @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.3); opacity: 1; } }
         @keyframes morph { 0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 10px 0; white-space: nowrap; }
+
+        /* COMPACT TICKER (40px) */
+        .terminal-parent { background: var(--grove-deep); border-radius: 2rem; color: #ecfdf5; min-height: 540px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; }
+        .broadcast-ticker { position: relative; height: 40px; overflow: hidden; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(16, 185, 129, 0.05); }
+        .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 12px 0; white-space: nowrap; }
         @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+
+        /* SOW & GROW EMOJI ANIMATION */
+        .gardener-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; }
+        .garden-plot { position: relative; width: 200px; height: 80px; }
+        .gardener-emoji { position: absolute; font-size: 40px; bottom: 0; animation: walkAndSowEmoji 8s infinite ease-in-out; z-index: 10; }
+        .tree-stage { position: absolute; bottom: 0; left: 130px; font-size: 0px; opacity: 0; animation: growthCycleEmoji 8s infinite; }
+        
+        @keyframes walkAndSowEmoji {
+            0% { transform: translateX(0) scaleX(1); }
+            30% { transform: translateX(80px) scaleX(1); }
+            40% { transform: translateX(80px) rotate(25deg); } /* Lean down to sow */
+            55% { transform: translateX(80px) rotate(0deg); }
+            75% { transform: translateX(0) scaleX(-1); } /* Walk back */
+            100% { transform: translateX(0) scaleX(-1); }
+        }
+        @keyframes growthCycleEmoji {
+            0%, 40% { font-size: 0px; opacity: 0; }
+            50% { font-size: 24px; opacity: 1; } /* Sprout */
+            65% { font-size: 32px; } /* Leafy */
+            80% { font-size: 55px; transform: translateY(-10px); } /* Full Tree */
+            95% { opacity: 0; }
+            100% { opacity: 0; }
+        }
+
+        /* VAULT RAIN RESTORED */
+        .vault-bg { position: relative; background: linear-gradient(to bottom, #061a14, #064e3b); border-radius: 2.5rem; overflow: hidden; min-height: 300px; display: flex; align-items: center; justify-content: center; }
+        .cedis-rain { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+        .cedi-symbol { position: absolute; color: rgba(16, 185, 129, 0.15); font-weight: 900; font-size: 24px; animation: fall linear infinite; }
+        @keyframes fall { from { transform: translateY(-50px) rotate(0deg); opacity: 1; } to { transform: translateY(350px) rotate(360deg); opacity: 0; } }
+
+        /* TABS */
+        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; width: 100%; gap: 4px; }
+        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; }
+        .tab-trigger.active { color: #fff; background: var(--grove-leaf); }
+        .tab-content { display: none; padding-top: 5px; }
+        .tab-content.active { display: block; }
     </style>
 </head>
-<body class="max-w-md mx-auto">
+<body class="max-w-md mx-auto" onclick="closeMenu()">
+
+    <div id="nodeMenu" class="node-menu">
+        <button onclick="alert('Email Request')" class="menu-item">Change Email</button>
+        <button onclick="alert('Phone Request')" class="menu-item">Add Phone</button>
+        <button onclick="alert('Support Request')" class="menu-item">Report Issue</button>
+        <button onclick="confirm('Delete Account?')" class="menu-item text-rose-500">Delete Account</button>
+        <button onclick="logout()" class="menu-item text-red-500 font-black">Exit</button>
+    </div>
 
     <header class="seed-header">
         <div class="seed-scatter" id="seed-box"></div>
@@ -64,18 +95,19 @@
             <div class="flex items-center gap-3">
                 <div class="soul-container"><div class="soul-aura"></div><div class="soul-core"></div></div>
                 <div>
-                    <h1 class="text-base font-black tracking-tighter text-slate-900 italic">GROVE</h1>
-                    <p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase tracking-widest italic">LOADING NODE...</p>
+                    <h1 class="text-base font-black tracking-tighter italic text-slate-900">GROVE</h1>
+                    <p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase italic">NODE ACTIVE</p>
                 </div>
             </div>
-            <button onclick="logout()" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-3 py-1.5 rounded-lg bg-white active:scale-95">Exit</button>
+            <button onclick="toggleMenu(event)" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-4 py-1.5 rounded-lg bg-white">Node Ops</button>
         </div>
+        
         <div class="relative z-10 flex gap-3">
-            <div class="flex-1 bg-slate-50/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-100">
+            <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Seed Base</p>
                 <div class="text-sm font-black text-slate-900 tracking-tighter" id="s-seed">GH₵0.00</div>
             </div>
-            <div class="flex-1 bg-emerald-50/80 backdrop-blur-sm p-4 rounded-2xl border-b-2 border-emerald-200 animate-pulse">
+            <div class="flex-1 bg-emerald-50 p-4 rounded-2xl border-b-2 border-emerald-200">
                 <p class="text-[8px] font-black text-emerald-600 uppercase mb-1">Available Grace</p>
                 <p id="s-reclaim" class="text-sm font-black text-emerald-600 tracking-tighter">GH₵0.00</p>
             </div>
@@ -84,7 +116,7 @@
 
     <main class="terminal-parent">
         <div class="broadcast-ticker">
-            <div id="dynamic-ticker" class="ticker-move italic">GIVERS NEVER LACK • HARVEST IN PROGRESS • SYNCING NODES...</div>
+            <div class="ticker-move italic">GIVERS NEVER LACK • HARVEST IN PROGRESS • SYNCING NODES...</div>
         </div>
         <div class="p-4">
             <nav class="nav-pill mb-6">
@@ -97,28 +129,28 @@
             <section id="t-orchard" class="tab-content active"><div id="orchard-list" class="space-y-3"></div></section>
             
             <section id="t-vault" class="tab-content">
-                <div class="vault-bg p-12 text-center relative">
+                <div class="vault-bg p-12 text-center">
                     <div class="cedis-rain" id="cedis-box"></div>
                     <div class="relative z-10">
-                        <p class="text-[8px] font-black text-emerald-400 uppercase mb-2 tracking-[0.2em] italic">Claim Vaulted</p>
+                        <p class="text-[8px] font-black text-emerald-400 uppercase mb-2 italic">Claim Vaulted</p>
                         <h2 id="v-balance" class="text-4xl font-black italic text-white mb-8 tracking-tighter">GH₵0.00</h2>
                         <div class="space-y-3">
-                            <button onclick="vaultAll()" class="w-full py-4 bg-emerald-500 text-emerald-950 font-black uppercase text-[10px] rounded-2xl shadow-lg active:scale-95">Vault Grace</button>
-                            <button onclick="toggleModal('withdrawModal', true)" class="w-full py-4 bg-white/10 text-white font-black uppercase text-[10px] rounded-2xl backdrop-blur-md border border-white/10 active:scale-95">Withdraw</button>
+                            <button onclick="vaultAll()" class="w-full py-4 bg-emerald-500 text-emerald-950 font-black uppercase text-[10px] rounded-2xl">Vault Grace</button>
+                            <button onclick="toggleModal('withdrawModal', true)" class="w-full py-4 bg-white/10 text-white font-black uppercase text-[10px] rounded-2xl border border-white/10">Withdraw</button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section id="t-comm" class="tab-content"><div id="comm-list" class="space-y-2"></div></section>
+            <section id="t-comm" class="tab-content"><div id="comm-list" class="space-y-2 py-10 text-center text-[8px] font-black opacity-30 uppercase tracking-[0.4em]">No Directives</div></section>
             <section id="t-ledger" class="tab-content"><div id="ledger-content" class="bg-black/20 rounded-2xl divide-y divide-white/5 overflow-hidden"></div></section>
         </div>
     </main>
 
-    <div id="withdrawModal" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center p-6 text-slate-900">
+    <div id="withdrawModal" class="fixed inset-0 bg-black/95 hidden z-[200] items-center justify-center p-6 text-slate-900">
         <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-xs">
-            <p class="text-[10px] font-black uppercase mb-1 text-emerald-600">Withdrawal</p>
-            <p class="text-[8px] font-bold text-slate-400 mb-6 uppercase italic">Available for withdrawal: <span id="m-avail" class="text-slate-900">GH₵0.00</span></p>
+            <p class="text-[10px] font-black uppercase text-emerald-600 mb-1">Withdrawal</p>
+            <p class="text-[8px] font-bold text-slate-400 mb-6 italic uppercase">Available: <span id="m-avail" class="text-slate-900">GH₵0.00</span></p>
             <input type="number" id="w-amount" placeholder="Amount (₵)" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl mb-2 font-black text-center text-lg outline-none" oninput="calcCharge()">
             <p id="charge-info" class="text-[7px] font-black text-emerald-600 uppercase text-center mb-6">2% Service Charge Deductible: GH₵0.00</p>
             <button onclick="requestWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[10px] uppercase">Authorize</button>
@@ -130,7 +162,10 @@
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
-        let userObj = null, capturableSum = 0, vaultedSum = 0, timers = {};
+        let userObj = null, capturableSum = 0, vaultedSum = 0;
+
+        function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
+        function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
 
         function createParticles() {
             const seedBox = document.getElementById('seed-box'), cediBox = document.getElementById('cedis-box');
@@ -156,7 +191,6 @@
             document.getElementById('user-display').innerText = user.email.split('@')[0].toUpperCase();
             createParticles(); sync();
             _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
-            setInterval(updateTimers, 1000);
         }
 
         async function sync() {
@@ -179,48 +213,40 @@
             document.getElementById('v-balance').innerText = `GH₵${vaultedSum.toFixed(2)}`;
             document.getElementById('m-avail').innerText = `GH₵${vaultedSum.toFixed(2)}`;
 
-            // GLOBAL MISSION TICKER
-            const { data: missions } = await _gv.from('settled_needs').select('*').order('created_at', { ascending: false }).limit(5);
-            const tickerEl = document.getElementById('dynamic-ticker');
-            if (missions && missions.length > 0) {
-                const missionStr = missions.map(m => `${m.description.toUpperCase()}: GH₵${parseFloat(m.cost_to_settle).toFixed(2)}`).join(' • ');
-                tickerEl.innerHTML = `GIVERS NEVER LACK • ${missionStr} • ${missionStr}`;
-            }
-
-            // MESSAGES
-            const { data: msgs } = await _gv.from('messages').select('*').or(`receiver_id.eq.${userObj.id},receiver_id.is.null`).order('created_at', { ascending: false });
-            document.getElementById('comm-list').innerHTML = (msgs || []).map(m => `<div class="bg-white/5 p-4 rounded-xl border ${m.receiver_id ? 'border-emerald-500/30' : 'border-white/5'} mb-2"><p class="text-[7px] font-black ${m.receiver_id ? 'text-amber-400' : 'text-emerald-500'} uppercase mb-1 italic">${m.receiver_id ? 'Directive' : (m.sender_name || 'System')}</p><p class="text-[9px] font-medium text-slate-300 leading-tight">${m.content}</p></div>`).join('') || '<p class="text-center py-20 opacity-10 text-[9px] font-black uppercase italic">Silence</p>';
-            
-            // LEDGER
-            document.getElementById('ledger-content').innerHTML = myLedger.map(l => `
-                <div class="p-4 flex justify-between items-center bg-white/5">
-                    <div>
-                        <p class="text-[9px] font-bold text-white mb-1 capitalize">${l.entry_type.replace('_', ' ')}</p>
-                        <p class="text-[7px] text-slate-500 uppercase font-black">${new Date(l.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <p class="text-xs font-black ${l.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${l.amount >= 0 ? '+' : ''}${parseFloat(l.amount).toFixed(2)}</p>
-                </div>
-            `).join('') || '<p class="p-10 text-center text-[8px] opacity-20 font-black">EMPTY LEDGER</p>';
-
-            // ORCHARD LIST WITH FUN EMPTY STATE
             const { data: broadcasts } = await _gv.from('ledger').select('*').eq('entry_type', 'gift_sent');
             const availableGifts = (broadcasts || []).filter(b => !myClaims.includes(b.id.toString()));
+            
             const orchardContainer = document.getElementById('orchard-list');
             if (availableGifts.length > 0) {
-                orchardContainer.innerHTML = availableGifts.map(g => {
-                    const parts = g.description.split(' | '), isWither = parts[0] === 'Wither Grace';
-                    const expiry = parts[1] ? new Date(parts[1]).getTime() : null;
-                    const isExpired = isWither && expiry && expiry <= Date.now();
-                    if (isWither && parts[1]) timers[g.id] = expiry;
-                    return `
-                    <div class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5 ${isExpired ? 'opacity-50' : ''}">
-                        <div><p class="text-sm font-black text-emerald-400 italic">GH₵${parseFloat(g.amount).toFixed(2)}</p><p class="text-[7px] font-black uppercase tracking-widest ${isWither ? 'text-rose-400' : 'text-emerald-500/40'}">${parts[0]} ${isWither ? `• <span id="timer-${g.id}">${isExpired ? 'EXPIRED' : '--:--'}</span>` : ''}</p></div>
-                        <button onclick="${isExpired ? '' : `claim('${g.id}', ${g.amount})`}" class="px-5 py-2 ${isExpired ? 'bg-slate-700 text-slate-400' : 'bg-emerald-600 text-white'} font-black text-[8px] uppercase rounded-lg">Capture</button>
-                    </div>`;
-                }).join('');
+                orchardContainer.innerHTML = availableGifts.map(g => `<div class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5"><div><p class="text-sm font-black text-emerald-400 italic">GH₵${parseFloat(g.amount).toFixed(2)}</p><p class="text-[7px] font-black uppercase text-emerald-500/50">Grace Available</p></div><button onclick="claim('${g.id}', ${g.amount})" class="px-5 py-2 bg-emerald-600 text-white font-black text-[8px] uppercase rounded-lg">Capture</button></div>`).join('');
             } else {
-                orchardContainer.innerHTML = `<div class="empty-orchard"><div class="sprout-icon"></div><p class="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500/40 italic">The Soil is Resting</p><p class="text-[7px] font-bold text-slate-500 uppercase mt-2">New Grace is being broadcasted soon...</p></div>`;
+                orchardContainer.innerHTML = `
+                <div class="gardener-zone">
+                    <div class="garden-plot">
+                        <div class="gardener-emoji">🧑‍🌾</div>
+                        <div class="tree-stage">🌱</div>
+                    </div>
+                    <p class="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500/40 italic mt-8">Givers Never Lack</p>
+                    <p class="text-[7px] font-bold text-slate-500 uppercase mt-2">The Orchard is resting...</p>
+                </div>`;
+                const stage = orchardContainer.querySelector('.tree-stage');
+                setInterval(() => {
+                    if(!stage) return;
+                    if(stage.innerText === '🌱') stage.innerText = '🌿';
+                    else if(stage.innerText === '🌿') stage.innerText = '🌳';
+                    else stage.innerText = '🌱';
+                }, 2000);
             }
+
+            // RESTORED LEDGER DISPLAY
+            document.getElementById('ledger-content').innerHTML = myLedger.slice(0, 10).map(l => `
+                <div class="p-4 flex justify-between items-center bg-white/5">
+                    <div>
+                        <p class="text-[9px] font-black uppercase text-white/80">${l.entry_type}</p>
+                        <p class="text-[7px] font-bold text-white/30 italic">${new Date(l.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <p class="text-[10px] font-black ${parseFloat(l.amount) < 0 ? 'text-rose-400' : 'text-emerald-400'}">₵${Math.abs(l.amount).toFixed(2)}</p>
+                </div>`).join('');
         }
 
         function calcCharge() { const val = (parseFloat(document.getElementById('w-amount').value) || 0) * 0.02; document.getElementById('charge-info').innerText = `2% Service Charge Deductible: GH₵${val.toFixed(2)}`; }
@@ -229,24 +255,12 @@
         async function requestWithdrawal() {
             const amt = parseFloat(document.getElementById('w-amount').value);
             if (!amt || amt > vaultedSum) return alert("Insufficient Balance");
-            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -amt, entry_type: 'withdrawal', description: `Momo Payout (2% Fee Ded. GH₵${(amt*0.02).toFixed(2)})` }]);
+            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -amt, entry_type: 'withdrawal', description: `Momo Payout` }]);
             toggleModal('withdrawModal', false); sync();
         }
-        function openTab(id) {
-            document.querySelectorAll('.tab-content, .tab-trigger').forEach(el => el.classList.remove('active'));
-            document.getElementById(id).classList.add('active'); document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
-            if(id === 't-comm') document.getElementById('btn-comm').innerHTML = 'Comm';
-        }
+        function openTab(id) { document.querySelectorAll('.tab-content, .tab-trigger').forEach(el => el.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-' + id.split('-')[1]).classList.add('active'); }
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
         async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
-        function updateTimers() {
-            const now = Date.now();
-            Object.keys(timers).forEach(id => {
-                const el = document.getElementById(`timer-${id}`);
-                const rem = Math.max(0, Math.floor((timers[id] - now) / 1000));
-                if(el) el.innerText = rem <= 0 ? "EXPIRED" : `${Math.floor(rem/60)}:${(rem%60).toString().padStart(2,'0')}`;
-            });
-        }
         init();
     </script>
 </body>
