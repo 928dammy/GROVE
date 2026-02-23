@@ -31,6 +31,12 @@
             to { transform: translateY(350px) rotate(360deg); opacity: 0; }
         }
 
+        /* 3. ORCHARD EMPTY STATE ANIMATION */
+        .empty-orchard { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; text-align: center; }
+        .sprout-icon { width: 40px; height: 40px; background: var(--grove-leaf); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); margin-bottom: 1.5rem; position: relative; animation: growPulse 3s infinite ease-in-out; }
+        .sprout-icon::after { content: ''; position: absolute; width: 20px; height: 20px; background: var(--emerald); border-radius: 50% 50% 50% 0; top: -5px; right: -5px; }
+        @keyframes growPulse { 0%, 100% { transform: rotate(-45deg) scale(1); opacity: 0.4; } 50% { transform: rotate(-45deg) scale(1.1); opacity: 0.8; } }
+
         /* TERMINAL DESIGN */
         .terminal-parent { background: var(--grove-deep); border-radius: 2rem; color: #ecfdf5; min-height: 540px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; }
         .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; width: 100%; gap: 4px; }
@@ -46,7 +52,7 @@
         .soul-aura { position: absolute; inset: 0; border: 1.5px solid rgba(16, 185, 129, 0.2); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; animation: morph 8s infinite linear; }
         @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.3); opacity: 1; } }
         @keyframes morph { 0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 10px 0; }
+        .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 10px 0; white-space: nowrap; }
         @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
     </style>
 </head>
@@ -59,10 +65,10 @@
                 <div class="soul-container"><div class="soul-aura"></div><div class="soul-core"></div></div>
                 <div>
                     <h1 class="text-base font-black tracking-tighter text-slate-900 italic">GROVE</h1>
-                    <p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase tracking-widest italic italic">LOADING NODE...</p>
+                    <p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase tracking-widest italic">LOADING NODE...</p>
                 </div>
             </div>
-            <button onclick="logout()" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-3 py-1.5 rounded-lg active:scale-95 bg-white">Exit</button>
+            <button onclick="logout()" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-3 py-1.5 rounded-lg bg-white active:scale-95">Exit</button>
         </div>
         <div class="relative z-10 flex gap-3">
             <div class="flex-1 bg-slate-50/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-100">
@@ -77,7 +83,9 @@
     </header>
 
     <main class="terminal-parent">
-        <div class="broadcast-ticker"><div class="ticker-move">GIVERS NEVER LACK • HARVEST IN PROGRESS • SYNCING NODES...</div></div>
+        <div class="broadcast-ticker">
+            <div id="dynamic-ticker" class="ticker-move italic">GIVERS NEVER LACK • HARVEST IN PROGRESS • SYNCING NODES...</div>
+        </div>
         <div class="p-4">
             <nav class="nav-pill mb-6">
                 <div id="btn-orchard" class="tab-trigger active" onclick="openTab('t-orchard')">Orchard</div>
@@ -95,7 +103,7 @@
                         <p class="text-[8px] font-black text-emerald-400 uppercase mb-2 tracking-[0.2em] italic">Claim Vaulted</p>
                         <h2 id="v-balance" class="text-4xl font-black italic text-white mb-8 tracking-tighter">GH₵0.00</h2>
                         <div class="space-y-3">
-                            <button onclick="vaultAll()" class="w-full py-4 bg-emerald-500 text-emerald-950 font-black uppercase text-[10px] rounded-2xl shadow-lg active:scale-95 transition-all">Vault Grace</button>
+                            <button onclick="vaultAll()" class="w-full py-4 bg-emerald-500 text-emerald-950 font-black uppercase text-[10px] rounded-2xl shadow-lg active:scale-95">Vault Grace</button>
                             <button onclick="toggleModal('withdrawModal', true)" class="w-full py-4 bg-white/10 text-white font-black uppercase text-[10px] rounded-2xl backdrop-blur-md border border-white/10 active:scale-95">Withdraw</button>
                         </div>
                     </div>
@@ -126,6 +134,7 @@
 
         function createParticles() {
             const seedBox = document.getElementById('seed-box'), cediBox = document.getElementById('cedis-box');
+            seedBox.innerHTML = ''; cediBox.innerHTML = '';
             for(let i=0; i<15; i++) {
                 const s = document.createElement('div'); s.className = 'seed';
                 s.style.width = s.style.height = `${Math.random()*4+2}px`;
@@ -154,6 +163,7 @@
             const { data: ledger } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
             const myLedger = (ledger || []).filter(l => l.user_id === userObj.id);
             const myClaims = myLedger.filter(l => l.entry_type === 'gift_received').map(c => c.description.split(': ')[1]?.trim());
+            
             let totalRec = 0, totalVault = 0, totalWith = 0, seedAmt = 0;
             myLedger.forEach(l => {
                 const val = parseFloat(l.amount) || 0, type = (l.entry_type || "").toLowerCase(), desc = (l.description || "").toLowerCase();
@@ -162,15 +172,55 @@
                 if (desc.includes('vault transfer')) totalVault += val;
                 if (type === 'withdrawal') totalWith += Math.abs(val);
             });
+            
             capturableSum = Math.max(0, totalRec - totalVault); vaultedSum = Math.max(0, totalVault - totalWith);
             document.getElementById('s-seed').innerText = `GH₵${seedAmt.toFixed(2)}`;
             document.getElementById('s-reclaim').innerText = `GH₵${capturableSum.toFixed(2)}`;
             document.getElementById('v-balance').innerText = `GH₵${vaultedSum.toFixed(2)}`;
             document.getElementById('m-avail').innerText = `GH₵${vaultedSum.toFixed(2)}`;
 
+            // GLOBAL MISSION TICKER
+            const { data: missions } = await _gv.from('settled_needs').select('*').order('created_at', { ascending: false }).limit(5);
+            const tickerEl = document.getElementById('dynamic-ticker');
+            if (missions && missions.length > 0) {
+                const missionStr = missions.map(m => `${m.description.toUpperCase()}: GH₵${parseFloat(m.cost_to_settle).toFixed(2)}`).join(' • ');
+                tickerEl.innerHTML = `GIVERS NEVER LACK • ${missionStr} • ${missionStr}`;
+            }
+
+            // MESSAGES
             const { data: msgs } = await _gv.from('messages').select('*').or(`receiver_id.eq.${userObj.id},receiver_id.is.null`).order('created_at', { ascending: false });
             document.getElementById('comm-list').innerHTML = (msgs || []).map(m => `<div class="bg-white/5 p-4 rounded-xl border ${m.receiver_id ? 'border-emerald-500/30' : 'border-white/5'} mb-2"><p class="text-[7px] font-black ${m.receiver_id ? 'text-amber-400' : 'text-emerald-500'} uppercase mb-1 italic">${m.receiver_id ? 'Directive' : (m.sender_name || 'System')}</p><p class="text-[9px] font-medium text-slate-300 leading-tight">${m.content}</p></div>`).join('') || '<p class="text-center py-20 opacity-10 text-[9px] font-black uppercase italic">Silence</p>';
-            if (msgs?.length > 0 && !document.getElementById('t-comm').classList.contains('active')) { document.getElementById('btn-comm').innerHTML = 'Comm <span class="w-1.5 h-1.5 bg-rose-500 rounded-full inline-block ml-1 animate-pulse"></span>'; }
+            
+            // LEDGER
+            document.getElementById('ledger-content').innerHTML = myLedger.map(l => `
+                <div class="p-4 flex justify-between items-center bg-white/5">
+                    <div>
+                        <p class="text-[9px] font-bold text-white mb-1 capitalize">${l.entry_type.replace('_', ' ')}</p>
+                        <p class="text-[7px] text-slate-500 uppercase font-black">${new Date(l.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <p class="text-xs font-black ${l.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${l.amount >= 0 ? '+' : ''}${parseFloat(l.amount).toFixed(2)}</p>
+                </div>
+            `).join('') || '<p class="p-10 text-center text-[8px] opacity-20 font-black">EMPTY LEDGER</p>';
+
+            // ORCHARD LIST WITH FUN EMPTY STATE
+            const { data: broadcasts } = await _gv.from('ledger').select('*').eq('entry_type', 'gift_sent');
+            const availableGifts = (broadcasts || []).filter(b => !myClaims.includes(b.id.toString()));
+            const orchardContainer = document.getElementById('orchard-list');
+            if (availableGifts.length > 0) {
+                orchardContainer.innerHTML = availableGifts.map(g => {
+                    const parts = g.description.split(' | '), isWither = parts[0] === 'Wither Grace';
+                    const expiry = parts[1] ? new Date(parts[1]).getTime() : null;
+                    const isExpired = isWither && expiry && expiry <= Date.now();
+                    if (isWither && parts[1]) timers[g.id] = expiry;
+                    return `
+                    <div class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5 ${isExpired ? 'opacity-50' : ''}">
+                        <div><p class="text-sm font-black text-emerald-400 italic">GH₵${parseFloat(g.amount).toFixed(2)}</p><p class="text-[7px] font-black uppercase tracking-widest ${isWither ? 'text-rose-400' : 'text-emerald-500/40'}">${parts[0]} ${isWither ? `• <span id="timer-${g.id}">${isExpired ? 'EXPIRED' : '--:--'}</span>` : ''}</p></div>
+                        <button onclick="${isExpired ? '' : `claim('${g.id}', ${g.amount})`}" class="px-5 py-2 ${isExpired ? 'bg-slate-700 text-slate-400' : 'bg-emerald-600 text-white'} font-black text-[8px] uppercase rounded-lg">Capture</button>
+                    </div>`;
+                }).join('');
+            } else {
+                orchardContainer.innerHTML = `<div class="empty-orchard"><div class="sprout-icon"></div><p class="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500/40 italic">The Soil is Resting</p><p class="text-[7px] font-bold text-slate-500 uppercase mt-2">New Grace is being broadcasted soon...</p></div>`;
+            }
         }
 
         function calcCharge() { const val = (parseFloat(document.getElementById('w-amount').value) || 0) * 0.02; document.getElementById('charge-info').innerText = `2% Service Charge Deductible: GH₵${val.toFixed(2)}`; }
@@ -189,7 +239,14 @@
         }
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
         async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
-        function updateTimers() { /* Timer logic existing */ }
+        function updateTimers() {
+            const now = Date.now();
+            Object.keys(timers).forEach(id => {
+                const el = document.getElementById(`timer-${id}`);
+                const rem = Math.max(0, Math.floor((timers[id] - now) / 1000));
+                if(el) el.innerText = rem <= 0 ? "EXPIRED" : `${Math.floor(rem/60)}:${(rem%60).toString().padStart(2,'0')}`;
+            });
+        }
         init();
     </script>
 </body>
