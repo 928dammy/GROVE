@@ -10,10 +10,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --emerald: #10b981; --grove-deep: #061a14; --grove-leaf: #064e3b; --gold: #fbbf24; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; margin: 0; overflow-x: hidden; color: #1e293b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; margin: 0; overflow-x: hidden; color: #1e293b; transition: filter 0.5s ease; }
         
+        /* SUSPENSION / WITHERED STATE */
+        body.withered { filter: grayscale(1) brightness(0.7); background: #020617; }
+        body.withered .terminal-parent { border-color: rgba(255, 0, 0, 0.3); }
+        #suspension-overlay { display: none; }
+        body.withered #suspension-overlay { 
+            display: flex; position: fixed; inset: 0; z-index: 45; 
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+            align-items: center; justify-content: center; pointer-events: none;
+        }
+        body.withered *:not(.node-menu):not(.node-menu *):not(header):not(header *) { pointer-events: none !important; }
+        body.withered .node-menu .menu-item:not(:last-child) { opacity: 0.2; pointer-events: none; }
+
         /* HEADER STYLES */
-        .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.02); z-index: 50; }
         .seed-scatter { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; border-radius: 2rem; }
         .seed { position: absolute; background: var(--emerald); border-radius: 50%; opacity: 0; animation: scatterGrow 4s infinite ease-out; }
         @keyframes scatterGrow {
@@ -22,56 +34,38 @@
             100% { transform: translateY(-40px) scale(1.5); opacity: 0; }
         }
 
-        /* RESTORED FULL NODE MENU */
+        /* NODE MENU */
         .node-menu { position: fixed; top: 75px; right: 2rem; width: 180px; background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 15px 35px rgba(0,0,0,0.15); display: none; z-index: 100; overflow: hidden; }
         .node-menu.active { display: block; animation: menuFade 0.2s ease-out; }
         @keyframes menuFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .menu-item { width: 100%; padding: 14px 20px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #f8fafc; color: #64748b; cursor: pointer; }
-        .menu-item:active { background: #f8fafc; color: var(--emerald); }
 
-        /* SOUL CORE STYLES */
+        /* SOUL CORE */
         .soul-container { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; z-index: 10; }
         .soul-core { width: 6px; height: 6px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 10px var(--emerald); animation: breathe 3s infinite; }
         .soul-aura { position: absolute; inset: 0; border: 1.5px solid rgba(16, 185, 129, 0.2); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; animation: morph 8s infinite linear; }
         @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.3); opacity: 1; } }
         @keyframes morph { 0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* TERMINAL STYLES */
+        /* TERMINAL & TICKER */
         .terminal-parent { background: var(--grove-deep); border-radius: 2rem; color: #ecfdf5; min-height: 540px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; }
         .broadcast-ticker { position: relative; height: 40px; overflow: hidden; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(16, 185, 129, 0.05); }
         .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 12px 0; white-space: nowrap; }
         @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
 
-        /* GARDENER ANIMATIONS */
+        /* GARDENER & VAULT RAIN */
         .gardener-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; }
         .garden-plot { position: relative; width: 200px; height: 80px; }
         .gardener-emoji { position: absolute; font-size: 40px; bottom: 0; animation: walkAndSowEmoji 8s infinite ease-in-out; z-index: 10; }
         .tree-stage { position: absolute; bottom: 0; left: 130px; font-size: 0px; opacity: 0; animation: growthCycleEmoji 8s infinite; }
-        
-        @keyframes walkAndSowEmoji {
-            0% { transform: translateX(0) scaleX(1); }
-            30% { transform: translateX(80px) scaleX(1); }
-            40% { transform: translateX(80px) rotate(25deg); }
-            55% { transform: translateX(80px) rotate(0deg); }
-            75% { transform: translateX(0) scaleX(-1); }
-            100% { transform: translateX(0) scaleX(-1); }
-        }
-        @keyframes growthCycleEmoji {
-            0%, 40% { font-size: 0px; opacity: 0; }
-            50% { font-size: 24px; opacity: 1; }
-            65% { font-size: 32px; }
-            80% { font-size: 55px; transform: translateY(-10px); }
-            95% { opacity: 0; }
-            100% { opacity: 0; }
-        }
+        @keyframes walkAndSowEmoji { 0% { transform: translateX(0) scaleX(1); } 30% { transform: translateX(80px) scaleX(1); } 40% { transform: translateX(80px) rotate(25deg); } 55% { transform: translateX(80px) rotate(0deg); } 75% { transform: translateX(0) scaleX(-1); } 100% { transform: translateX(0) scaleX(-1); } }
+        @keyframes growthCycleEmoji { 0%, 40% { font-size: 0px; opacity: 0; } 50% { font-size: 24px; opacity: 1; } 65% { font-size: 32px; } 80% { font-size: 55px; transform: translateY(-10px); } 95% { opacity: 0; } 100% { opacity: 0; } }
 
-        /* VAULT RAIN */
         .vault-bg { position: relative; background: linear-gradient(to bottom, #061a14, #064e3b); border-radius: 2.5rem; overflow: hidden; min-height: 300px; display: flex; align-items: center; justify-content: center; }
         .cedis-rain { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
         .cedi-symbol { position: absolute; color: rgba(16, 185, 129, 0.15); font-weight: 900; font-size: 24px; animation: fall linear infinite; }
         @keyframes fall { from { transform: translateY(-50px) rotate(0deg); opacity: 1; } to { transform: translateY(350px) rotate(360deg); opacity: 0; } }
 
-        /* NAVIGATION TABS */
         .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; width: 100%; gap: 4px; }
         .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; }
         .tab-trigger.active { color: #fff; background: var(--grove-leaf); }
@@ -80,6 +74,13 @@
     </style>
 </head>
 <body class="max-w-md mx-auto" onclick="closeMenu()">
+
+    <div id="suspension-overlay">
+        <div class="text-center p-8 bg-black/60 rounded-3xl backdrop-blur-md border border-white/10">
+            <p class="text-[10px] font-black text-rose-500 tracking-[0.5em] uppercase italic">Node Suspended</p>
+            <p class="text-[7px] text-white/40 uppercase mt-2 font-bold tracking-widest">Givers Never Lack • Restore Protocol Required</p>
+        </div>
+    </div>
 
     <div id="nodeMenu" class="node-menu">
         <button onclick="requestOp('Email Update Requested')" class="menu-item">Change Email</button>
@@ -99,7 +100,7 @@
                     <p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase italic">NODE ACTIVE</p>
                 </div>
             </div>
-            <button onclick="toggleMenu(event)" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-4 py-1.5 rounded-lg bg-white">ACCOUNT</button>
+            <button onclick="toggleMenu(event)" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-4 py-1.5 rounded-lg bg-white">Node Ops</button>
         </div>
         
         <div class="relative z-10 flex gap-3">
@@ -116,7 +117,7 @@
 
     <main class="terminal-parent">
         <div class="broadcast-ticker">
-            <div id="ticker-output" class="ticker-move italic">MISSION SPEND📜🪶...</div>
+            <div id="ticker-output" class="ticker-move italic">GIVERS NEVER LACK • HARVEST IN PROGRESS...</div>
         </div>
         <div class="p-4">
             <nav class="nav-pill mb-6">
@@ -164,13 +165,11 @@
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         let userObj = null, capturableSum = 0, vaultedSum = 0;
 
-        // UI HELPERS
         function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
         function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
         function requestOp(msg) { alert(msg); closeMenu(); }
         function confirmOp(msg) { if(confirm(msg)) alert("Request Sent"); closeMenu(); }
 
-        // PARTICLE SYSTEM
         function createParticles() {
             const seedBox = document.getElementById('seed-box'), cediBox = document.getElementById('cedis-box');
             seedBox.innerHTML = ''; cediBox.innerHTML = '';
@@ -192,111 +191,71 @@
             const { data: { user } } = await _gv.auth.getUser();
             if(!user) return window.location.href = "index.html";
             userObj = user;
-            document.getElementById('user-display').innerText = user.email.split('@')[0].toUpperCase();
             createParticles(); sync();
-            _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
+            _gv.channel('any').on('postgres_changes', {event:'*', schema:'public'}, () => sync()).subscribe();
         }
 
         async function sync() {
+            // CHECK SUSPENSION
+            const { data: profile } = await _gv.from('profiles').select('is_suspended').eq('id', userObj.id).single();
+            if (profile?.is_suspended) {
+                document.body.classList.add('withered');
+                document.getElementById('user-display').innerText = "NODE SUSPENDED";
+            } else {
+                document.body.classList.remove('withered');
+                document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
+            }
+
             const { data: ledger } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
-            
-            // TICKER LOGIC (REPRODUCTION OF ADMIN STATUS CHECK)
-            const { data: missions } = await _gv.from('settled_needs')
-                .select('description')
-                .eq('status', 'LIVE')
-                .order('created_at', { ascending: false });
-            
+            const { data: missions } = await _gv.from('settled_needs').select('description').eq('status', 'LIVE').order('created_at', { ascending: false });
             const { data: messages } = await _gv.from('messages').select('*').eq('receiver_id', userObj.id).order('created_at', { ascending: false });
 
-            // UPDATE TICKER
+            // TICKER
             const tickerEl = document.getElementById('ticker-output');
             const slogan = "GIVERS NEVER LACK";
-            if (missions && missions.length > 0) {
-                const missionText = missions.map(m => m.description).join(' • ');
-                tickerEl.innerText = `${missionText} • ${slogan} • HARVEST IN PROGRESS...`;
+            if (missions?.length > 0) {
+                tickerEl.innerText = `${missions.map(m => m.description).join(' • ')} • ${slogan} • HARVEST IN PROGRESS...`;
             } else {
                 tickerEl.innerText = `${slogan} • HARVEST IN PROGRESS • SYNCING NODES...`;
             }
 
-            // UPDATE COMM
-            const commList = document.getElementById('comm-list');
-            if (messages && messages.length > 0) {
-                commList.innerHTML = messages.map(msg => `
-                    <div class="bg-white/5 p-4 rounded-2xl border-l-2 border-emerald-500 mb-2 text-left">
-                        <p class="text-[7px] font-black text-emerald-500 uppercase mb-1">SYSTEM</p>
-                        <p class="text-[10px] font-bold text-white leading-tight uppercase tracking-tight">${msg.content}</p>
-                        <p class="text-[6px] text-white/20 mt-2 font-black uppercase">${new Date(msg.created_at).toLocaleTimeString()}</p>
-                    </div>`).join('');
-            } else {
-                commList.innerHTML = `<div class="py-10 text-center text-[8px] font-black opacity-30 uppercase tracking-[0.4em]">No Directives</div>`;
-            }
+            // COMM
+            document.getElementById('comm-list').innerHTML = messages?.length ? messages.map(msg => `
+                <div class="bg-white/5 p-4 rounded-2xl border-l-2 border-emerald-500 mb-2">
+                    <p class="text-[7px] font-black text-emerald-500 uppercase mb-1">SYSTEM</p>
+                    <p class="text-[10px] font-bold text-white uppercase">${msg.content}</p>
+                </div>`).join('') : `<div class="py-10 text-center text-[8px] font-black opacity-30 uppercase tracking-[0.4em]">No Directives</div>`;
 
-            // BALANCE AND LEDGER LOGIC
+            // ACCOUNTING
             const myLedger = (ledger || []).filter(l => l.user_id === userObj.id);
             const myClaims = myLedger.filter(l => l.entry_type === 'gift_received').map(c => c.description.split(': ')[1]?.trim());
-            
-            let totalRec = 0, totalVault = 0, totalWith = 0, seedAmt = 0;
+            let tr=0, tv=0, tw=0, sa=0;
             myLedger.forEach(l => {
-                const val = parseFloat(l.amount) || 0, type = (l.entry_type || "").toLowerCase(), desc = (l.description || "").toLowerCase();
-                if ((type === 'seed' || desc.includes('seed')) && !desc.includes('vault transfer')) seedAmt += val;
-                if (type === 'gift_received') totalRec += val;
-                if (desc.includes('vault transfer')) totalVault += val;
-                if (type === 'withdrawal') totalWith += Math.abs(val);
+                const v = parseFloat(l.amount) || 0, t = l.entry_type?.toLowerCase(), d = l.description?.toLowerCase();
+                if ((t === 'seed' || d.includes('seed')) && !d.includes('vault transfer')) sa += v;
+                if (t === 'gift_received') tr += v;
+                if (d.includes('vault transfer')) tv += v;
+                if (t === 'withdrawal') tw += Math.abs(v);
             });
-            
-            capturableSum = Math.max(0, totalRec - totalVault); 
-            vaultedSum = Math.max(0, totalVault - totalWith);
-
-            document.getElementById('s-seed').innerText = `GH₵${seedAmt.toFixed(2)}`;
+            capturableSum = Math.max(0, tr - tv); vaultedSum = Math.max(0, tv - tw);
+            document.getElementById('s-seed').innerText = `GH₵${sa.toFixed(2)}`;
             document.getElementById('s-reclaim').innerText = `GH₵${capturableSum.toFixed(2)}`;
             document.getElementById('v-balance').innerText = `GH₵${vaultedSum.toFixed(2)}`;
             document.getElementById('m-avail').innerText = `GH₵${vaultedSum.toFixed(2)}`;
 
-            // ORCHARD SYSTEM
+            // ORCHARD
             const { data: broadcasts } = await _gv.from('ledger').select('*').eq('entry_type', 'gift_sent');
-            const availableGifts = (broadcasts || []).filter(b => !myClaims.includes(b.id.toString()));
-            
+            const availGifts = (broadcasts || []).filter(b => !myClaims.includes(b.id.toString()));
             const orchardContainer = document.getElementById('orchard-list');
-            if (availableGifts.length > 0) {
-                orchardContainer.innerHTML = availableGifts.map(g => `
-                    <div class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5">
-                        <div>
-                            <p class="text-sm font-black text-emerald-400 italic">GH₵${parseFloat(g.amount).toFixed(2)}</p>
-                            <p class="text-[7px] font-black uppercase text-emerald-500/50">Grace Available</p>
-                        </div>
-                        <button onclick="claim('${g.id}', ${g.amount})" class="px-5 py-2 bg-emerald-600 text-white font-black text-[8px] uppercase rounded-lg">Capture</button>
-                    </div>`).join('');
+            if (availGifts.length > 0) {
+                orchardContainer.innerHTML = availGifts.map(g => `<div class="bg-white/5 p-4 flex justify-between items-center rounded-2xl border border-white/5"><div><p class="text-sm font-black text-emerald-400 italic">GH₵${parseFloat(g.amount).toFixed(2)}</p><p class="text-[7px] font-black uppercase text-emerald-500/50">Grace Available</p></div><button onclick="claim('${g.id}', ${g.amount})" class="px-5 py-2 bg-emerald-600 text-white font-black text-[8px] uppercase rounded-lg">Capture</button></div>`).join('');
             } else {
-                orchardContainer.innerHTML = `
-                <div class="gardener-zone">
-                    <div class="garden-plot">
-                        <div class="gardener-emoji">🧑‍🌾</div>
-                        <div class="tree-stage">🌱</div>
-                    </div>
-                    <p class="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500/40 italic mt-8">${slogan}</p>
-                    <p class="text-[7px] font-bold text-slate-500 uppercase mt-2">The Orchard is resting...</p>
-                </div>`;
-                const stage = orchardContainer.querySelector('.tree-stage');
-                if(stage) {
-                    setInterval(() => {
-                        if(stage.innerText === '🌱') stage.innerText = '🌿';
-                        else if(stage.innerText === '🌿') stage.innerText = '🌳';
-                        else stage.innerText = '🌱';
-                    }, 2000);
-                }
+                orchardContainer.innerHTML = `<div class="gardener-zone"><div class="garden-plot"><div class="gardener-emoji">🧑‍🌾</div><div class="tree-stage">🌱</div></div><p class="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-500/40 italic mt-8">${slogan}</p></div>`;
             }
 
-            document.getElementById('ledger-content').innerHTML = myLedger.slice(0, 10).map(l => `
-                <div class="p-4 flex justify-between items-center bg-white/5">
-                    <div>
-                        <p class="text-[9px] font-black uppercase text-white/80">${l.entry_type}</p>
-                        <p class="text-[7px] font-bold text-white/30 italic">${new Date(l.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <p class="text-[10px] font-black ${parseFloat(l.amount) < 0 ? 'text-rose-400' : 'text-emerald-400'}">₵${Math.abs(l.amount).toFixed(2)}</p>
-                </div>`).join('');
+            document.getElementById('ledger-content').innerHTML = myLedger.slice(0, 10).map(l => `<div class="p-4 flex justify-between items-center bg-white/5"><div><p class="text-[9px] font-black uppercase text-white/80">${l.entry_type}</p><p class="text-[7px] font-bold text-white/30 italic">${new Date(l.created_at).toLocaleDateString()}</p></div><p class="text-[10px] font-black ${parseFloat(l.amount) < 0 ? 'text-rose-400' : 'text-emerald-400'}">₵${Math.abs(l.amount).toFixed(2)}</p></div>`).join('');
         }
 
-        // TRANSACTIONAL LOGIC
         function calcCharge() { const val = (parseFloat(document.getElementById('w-amount').value) || 0) * 0.02; document.getElementById('charge-info').innerText = `2% Service Charge Deductible: GH₵${val.toFixed(2)}`; }
         async function claim(id, amt) { await _gv.from('ledger').insert([{ user_id: userObj.id, amount: amt, entry_type: 'gift_received', description: `Claim: ${id}` }]); sync(); }
         async function vaultAll() { if (capturableSum > 0) { await _gv.from('ledger').insert([{ user_id: userObj.id, amount: capturableSum, entry_type: 'seed', description: 'Vault Transfer' }]); sync(); } }
