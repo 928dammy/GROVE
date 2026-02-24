@@ -246,7 +246,9 @@
         }
 
         async function sync() {
-            const { data: profile } = await _gv.from('profiles').select('is_suspended, is_verified').eq('id', userObj.id).maybeSingle();
+            const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
+            
+            // WITHERED LOGIC: Unverified OR Suspended
             const isUnverified = !profile || profile.is_verified !== true;
             const isSuspended = profile?.is_suspended === true;
 
