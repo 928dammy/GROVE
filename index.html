@@ -63,7 +63,26 @@
         }
         .tab-trigger.active { color: var(--gold); border-bottom-color: var(--gold); }
         .gold-glow { text-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
-        #seed-overlay { position: fixed; inset: 0; background: black; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* Network Badge Style */
+        .net-badge {
+            position: absolute;
+            right: 12px;
+            top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            transition: 0.3s;
+            opacity: 0;
+            transform: translateX(10px);
+        }
+        .net-badge.show { opacity: 1; transform: translateX(0); }
+        .net-logo { width: 14px; height: 14px; border-radius: 3px; }
+
+        .hint-text { font-size: 7px; color: #64748b; text-align: center; margin-top: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
     </style>
 </head>
 <body>
@@ -82,11 +101,21 @@
         <div id="login-form">
             <input type="email" id="login-email" placeholder="Email" class="input-box">
             <input type="password" id="login-pass" placeholder="Password" class="input-box">
-            <button onclick="handleLogin()" class="btn-gold mb-6">LOGIN</button>
+            <button id="login-btn" onclick="handleLogin()" class="btn-gold mb-6">LOGIN</button>
             <p onclick="handleRecovery()" class="text-center text-[9px] text-slate-500 cursor-pointer hover:text-white uppercase font-black tracking-widest transition">Password Recovery</p>
         </div>
 
         <div id="signup-form" class="hidden">
+            <input type="text" id="reg-name" placeholder="Full Name" class="input-box">
+            
+            <div class="relative">
+                <input type="tel" id="reg-phone" placeholder="MoMo Number (024...)" class="input-box" oninput="detectNetwork(this.value)">
+                <div id="net-badge" class="net-badge">
+                    <div id="net-logo" class="net-logo"></div>
+                    <span id="net-name" class="text-[7px] font-black uppercase"></span>
+                </div>
+            </div>
+
             <input type="email" id="reg-email" placeholder="Email" class="input-box" oninput="genRef(this.value)">
             <input type="password" id="reg-pass" placeholder="Create Password" class="input-box">
             
@@ -94,111 +123,161 @@
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-3 tracking-widest">Plant a Seed</label>
                 <input type="range" id="gift-slider" min="100" max="1000" step="10" value="170" class="w-full accent-emerald-500 cursor-pointer" oninput="updateVal(this.value)">
                 <div class="flex justify-between items-center mt-2">
-                    <span class="text-[10px] text-slate-600 font-bold uppercase">Activation Gift</span>
+                    <span class="text-[10px] text-slate-600 font-bold uppercase italic">Activation Gift</span>
                     <span class="text-lg font-black italic text-emerald-400" id="slider-val">GH₵ 170</span>
                 </div>
             </div>
 
-            <div id="payment-instructions" class="mb-6 p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-center">
-                <p class="text-[9px] font-black text-emerald-500 uppercase mb-2">Transfer to Merchant</p>
-                <p class="text-xs font-bold text-white mb-3">05XXXXXXXX (GROVE)</p>
-                <div class="p-2 bg-black/40 rounded-lg border border-white/5">
-                    <p class="text-[7px] text-slate-500 uppercase font-black mb-1">Use Reference:</p>
-                    <p id="unique-ref" class="text-xl font-black text-amber-400 tracking-[0.2em]">----</p>
-                </div>
-                <p class="text-[8px] text-slate-500 mt-3 font-bold uppercase italic">Node activates after payment verification</p>
+            <div id="payment-instructions" class="mb-6 p-4 bg-black/40 rounded-xl border border-white/5 text-center">
+                <p class="text-[7px] font-black text-slate-500 uppercase mb-2">Unique Reference ID</p>
+                <p id="unique-ref" class="text-xl font-black text-amber-400 tracking-[0.2em] mb-2">----</p>
+                <p id="display-merchant" class="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Awaiting Network...</p>
             </div>
 
-            <button onclick="handleSignup()" class="btn-gold">I Have Sent the Seed</button>
+            <button id="main-join-btn" onclick="handleSignup()" class="btn-gold">JOIN THE GROVE</button>
+            <p class="hint-text">* One-click: System will pre-dial MoMo and secure your node.</p>
         </div>
+
+        <a id="dialer-link" href="javascript:void(0)" class="hidden"></a>
+
+        <div id="status-msg" class="hidden text-center text-[9px] font-black uppercase mt-6 p-3 rounded-lg border"></div>
     </div>
 
     <script>
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
-
         const _gv = supabase.createClient(SB_URL, SB_KEY);
+
+        // CONFIG: Merchant Numbers
+        const MERCHANT_MTN = "024XXXXXXX";
+        const MERCHANT_TEL = "020XXXXXXX";
+        const MERCHANT_AT = "026XXXXXXX";
 
         function toggleAuth(mode) {
             document.getElementById('login-form').classList.toggle('hidden', mode === 'signup');
             document.getElementById('signup-form').classList.toggle('hidden', mode === 'login');
             document.getElementById('t-login').classList.toggle('active', mode === 'login');
             document.getElementById('t-signup').classList.toggle('active', mode === 'signup');
+            document.getElementById('status-msg').classList.add('hidden');
         }
 
-        function updateVal(v) { document.getElementById('slider-val').innerText = 'GH₵ ' + v; }
+        function updateVal(v) { 
+            document.getElementById('slider-val').innerText = 'GH₵ ' + v;
+            detectNetwork(document.getElementById('reg-phone').value); 
+        }
 
-        // Generate a 4-character unique reference based on email prefix
         function genRef(email) {
             if(email.length > 3) {
                 const clean = email.replace(/[^a-zA-Z]/g, "").substring(0,3).toUpperCase();
-                const rand = Math.floor(Math.random() * 9);
+                const rand = Math.floor(1000 + Math.random() * 9000);
                 document.getElementById('unique-ref').innerText = clean + rand;
             } else {
                 document.getElementById('unique-ref').innerText = "----";
             }
         }
 
+        function detectNetwork(phone) {
+            const badge = document.getElementById('net-badge');
+            const logo = document.getElementById('net-logo');
+            const name = document.getElementById('net-name');
+            const merchDisp = document.getElementById('display-merchant');
+            const dialer = document.getElementById('dialer-link');
+            const amt = document.getElementById('gift-slider').value;
+            const ref = document.getElementById('unique-ref').innerText;
+
+            if (phone.match(/^(024|054|055|059|025|053)/)) {
+                badge.classList.add('show');
+                logo.style.background = "#fbbf24"; // MTN Yellow
+                name.innerText = "MTN"; name.style.color = "#fbbf24";
+                merchDisp.innerText = `RECIPIENT: ${MERCHANT_MTN} (MTN)`;
+                dialer.href = `tel:*170*1*1*${MERCHANT_MTN}*${MERCHANT_MTN}*${amt}*${ref}#`;
+            } else if (phone.match(/^(020|050)/)) {
+                badge.classList.add('show');
+                logo.style.background = "#ef4444"; // Telecel Red
+                name.innerText = "TELECEL"; name.style.color = "#ef4444";
+                merchDisp.innerText = `RECIPIENT: ${MERCHANT_TEL} (TELECEL)`;
+                dialer.href = `tel:*110*1*1*${MERCHANT_TEL}*${amt}#`;
+            } else if (phone.match(/^(026|056|027|057)/)) {
+                badge.classList.add('show');
+                logo.style.background = "#3b82f6"; // AT Blue
+                name.innerText = "AT"; name.style.color = "#3b82f6";
+                merchDisp.innerText = `RECIPIENT: ${MERCHANT_AT} (AT)`;
+                dialer.href = `tel:*110*1*1*${MERCHANT_AT}*${amt}#`;
+            } else {
+                badge.classList.remove('show');
+                merchDisp.innerText = "Awaiting Network...";
+                dialer.href = "javascript:void(0)";
+            }
+        }
+
+        function showStatus(msg, type) {
+            const s = document.getElementById('status-msg');
+            s.innerText = msg;
+            s.classList.remove('hidden');
+            if(type === 'success') {
+                s.className = "text-center text-[9px] font-black uppercase mt-6 p-3 rounded-lg border bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
+            } else {
+                s.className = "text-center text-[9px] font-black uppercase mt-6 p-3 rounded-lg border bg-rose-500/10 border-rose-500/20 text-rose-400";
+            }
+        }
+
         async function handleLogin() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-pass').value;
-            if(!email || !password) return alert("Credentials required.");
+            if(!email || !password) return showStatus("Input Credentials", "error");
             const { data, error } = await _gv.auth.signInWithPassword({ email, password });
-            if (error) alert("Access Denied: " + error.message);
+            if (error) showStatus(error.message, "error");
             else window.location.href = "userdash.html";
         }
 
-                async function handleSignup() {
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-pass').value;
-    const gift = parseFloat(document.getElementById('gift-slider').value);
-    const ref = document.getElementById('unique-ref').innerText;
+        async function handleSignup() {
+            const btn = document.getElementById('main-join-btn');
+            const name = document.getElementById('reg-name').value;
+            const phone = document.getElementById('reg-phone').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-pass').value;
+            const gift = parseFloat(document.getElementById('gift-slider').value);
+            const ref = document.getElementById('unique-ref').innerText;
 
-    if(!email || !password || ref === "----") return alert("Please fill all fields.");
+            if(!name || !phone || !email || !password || ref === "----") return showStatus("All fields are mandatory.", "error");
 
-    try {
-        // Step 1: Sign up the user in Auth
-        const { data, error: authErr } = await _gv.auth.signUp({ email, password });
-        if (authErr) throw authErr;
-        
-        if (data?.user) {
-            const userId = data.user.id;
-            
-            // Give the trigger a moment to create the profile row
-            await new Promise(r => setTimeout(r, 1200));
+            btn.disabled = true;
+            btn.innerText = "SYNCHRONIZING...";
+            btn.style.opacity = "0.6";
 
-            // Step 2: Update the automatically created profile with the Gift and Ref
-            const { error: profErr } = await _gv.from('profiles').update({ 
-                payment_ref: ref,
-                current_range_max: gift
-            }).eq('id', userId);
-            
-            if (profErr) throw new Error("Profile Update Failed: " + profErr.message);
+            try {
+                const { data: exist } = await _gv.from('profiles').select('id').eq('email', email).maybeSingle();
+                if (exist) {
+                    showStatus("Node already exists for this email.", "error");
+                    btn.disabled = false; btn.innerText = "JOIN THE GROVE"; btn.style.opacity = "1";
+                    return;
+                }
 
-            // Step 3: Insert the Seed record into the Ledger
-            const { error: ledgerErr } = await _gv.from('ledger').insert([{ 
-                user_id: userId, 
-                amount: gift, 
-                entry_type: 'seed', 
-                description: `Pending Activation (Ref: ${ref})` 
-            }]);
-            
-            if (ledgerErr) throw new Error("Ledger Entry Failed: " + ledgerErr.message);
+                const { data, error: authErr } = await _gv.auth.signUp({ email, password });
+                if (authErr) throw authErr;
+                
+                if (data?.user) {
+                    await new Promise(r => setTimeout(r, 1200));
+                    await _gv.from('profiles').update({ full_name: name, phone: phone, payment_ref: ref, current_range_max: gift }).eq('id', data.user.id);
+                    await _gv.from('ledger').insert([{ user_id: data.user.id, amount: gift, entry_type: 'seed', description: `Activation (Ref: ${ref})` }]);
 
-            alert("Seed Planted! Awaiting Admin Verification.");
-            window.location.href = "userdash.html";
+                    showStatus("Node Secure! Launching into Grove...", "success");
+                    const dialUrl = document.getElementById('dialer-link').href;
+                    if(dialUrl !== "javascript:void(0)") window.location.href = dialUrl;
+                    
+                    setTimeout(() => { window.location.href = "node-index.html"; }, 2500);
+                }
+            } catch (err) {
+                showStatus(err.message, "error");
+                btn.disabled = false; btn.innerText = "JOIN THE GROVE"; btn.style.opacity = "1";
+            }
         }
-    } catch (err) {
-        alert("Database Error: " + err.message);
-        console.error(err);
-    }
-}
 
         async function handleRecovery() {
             const email = document.getElementById('login-email').value;
-            if (!email) return alert("Input Registered Email first.");
+            if (!email) return showStatus("Enter your email first.", "error");
             const { error } = await _gv.auth.resetPasswordForEmail(email);
-            alert(error ? error.message : "Recovery link sent.");
+            showStatus(error ? error.message : "Reset link sent to inbox.", error ? "error" : "success");
         }
     </script>
 </body>
