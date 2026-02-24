@@ -83,52 +83,74 @@
     </div>
 
     <script>
+        // CONFIG VALIDATION
         const SB_URL = window.CONFIG?.SB_URL;
         const SB_KEY = window.CONFIG?.SB_KEY;
+
+        if (!SB_URL || !SB_KEY) {
+            console.error("CRITICAL: Supabase Config missing from config.js");
+            document.getElementById('error-msg').innerText = "CONFIG ERROR: Check config.js";
+            document.getElementById('error-msg').classList.remove('hidden');
+        }
+
         const _gv = supabase.createClient(SB_URL, SB_KEY);
 
         document.getElementById('admin-form').addEventListener('submit', async (e) => {
+            // STOP DEFAULT PAGE RELOAD
             e.preventDefault();
+            
             const btn = document.getElementById('login-btn');
             const err = document.getElementById('error-msg');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
             
             btn.innerText = "VERIFYING...";
             btn.disabled = true;
             err.classList.add('hidden');
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            console.log("Terminal: Initiating authentication for", email);
 
-            // 1. Sign in with Supabase Auth
-            const { data, error } = await _gv.auth.signInWithPassword({ email, password });
+            try {
+                // 1. Sign in with Supabase Auth
+                const { data, error: authError } = await _gv.auth.signInWithPassword({ email, password });
 
-            if (error) {
-                console.error("Auth Error:", error.message);
-                handleFail(btn, err);
-                return;
+                if (authError) {
+                    throw new Error("AUTH: " + authError.message);
+                }
+
+                console.log("Terminal: Auth Success. User ID:", data.user.id);
+
+                // 2. Check if this user exists in the grove_admins table
+                const { data: adminRecord, error: dbError } = await _gv
+                    .from('grove_admins')
+                    .select('id')
+                    .eq('id', data.user.id)
+                    .maybeSingle();
+
+                if (dbError) {
+                    throw new Error("DATABASE: " + dbError.message);
+                }
+
+                if (!adminRecord) {
+                    console.warn("Terminal: ID not found in grove_admins. Logging out.");
+                    await _gv.auth.signOut(); 
+                    throw new Error("ACCESS DENIED: Identity not in management records.");
+                }
+
+                // 3. SUCCESS - Redirect to the console file
+                console.log("Terminal: Identity Verified. Redirecting to console.html...");
+                window.location.href = "console.html";
+
+            } catch (error) {
+                console.error("Terminal Failure:", error.message);
+                handleFail(btn, err, error.message);
             }
-
-            // 2. Check if this user exists in the grove_admins table
-            const { data: adminRecord, error: adminError } = await _gv
-                .from('grove_admins')
-                .select('id')
-                .eq('id', data.user.id)
-                .maybeSingle();
-
-            if (adminError || !adminRecord) {
-                console.error("Not an admin in DB table");
-                await _gv.auth.signOut(); 
-                handleFail(btn, err);
-                return;
-            }
-
-            // 3. SUCCESS - Redirect to the real file name
-            window.location.href = "console.html";
         });
 
-        function handleFail(btn, err) {
+        function handleFail(btn, err, customMsg) {
             btn.innerText = "ESTABLISH CONNECTION";
             btn.disabled = false;
+            err.innerText = customMsg || "Identity Verification Failed";
             err.classList.remove('hidden');
         }
     </script>
