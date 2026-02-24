@@ -83,9 +83,9 @@
     </div>
 
     <script>
-        // CONFIG VALIDATION
-        const SB_URL = window.CONFIG?.SB_URL;
-        const SB_KEY = window.CONFIG?.SB_KEY;
+        const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
+        const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
+        const _gv = supabase.createClient(SB_URL, SB_KEY);
 
         if (!SB_URL || !SB_KEY) {
             console.error("CRITICAL: Supabase Config missing from config.js");
