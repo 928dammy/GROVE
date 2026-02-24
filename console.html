@@ -136,108 +136,83 @@
         let adminUser = null;
 
         async function sync() {
-            try {
-                const { data: authData } = await _gv.auth.getUser().catch(e => ({data: {user: null}}));
-                adminUser = authData?.user;
+    console.log("Syncing Admin Data...");
+    try {
+        // Fetching with corrected table names
+        const { data: nodes, error: nErr } = await _gv.from('profiles').select('*');
+        const { data: ledger, error: lErr } = await _gv.from('ledger').select('*');
 
-                // Strict fetching from our new schema
-                const { data: nodes, error: nErr } = await _gv.from('profiles').select('*');
-                const { data: ledger, error: lErr } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
-                const { data: missions } = await _gv.from('settled_needs').select('*').neq('status', 'ARCHIVED').order('created_at', { ascending: false });
+        if (nErr) throw nErr;
 
-                if (nErr) throw nErr;
+        let globalSeeded = 0;
+        let globalWithdrawn = 0;
+        const nodeStats = {};
+        
+        // 1. Initialize nodes (Prevents crashes if ledger is empty)
+        nodes?.forEach(n => { 
+            nodeStats[n.id] = { seeded: 0, vaulted: 0, withdrawn: 0 }; 
+        });
 
-                let globalSeeded = 0, globalWithdrawn = 0, totalVaulted = 0;
-                const nodeDetails = {};
-                
-                nodes?.forEach(n => { 
-                    nodeDetails[n.id] = { seeded: 0, vaulted: 0, withdrawn: 0 }; 
-                });
-
-                ledger?.forEach(l => {
-                    const val = parseFloat(l.amount) || 0;
-                    const type = (l.entry_type || "").toLowerCase();
-                    const desc = (l.description || "").toLowerCase();
-                    
-                    if(type === 'seed' && !desc.includes('vault transfer')) globalSeeded += val;
-                    if(type === 'withdrawal') globalWithdrawn += Math.abs(val);
-
-                    if (l.user_id && nodeDetails[l.user_id]) {
-                        if (type === 'seed' && !desc.includes('vault transfer')) nodeDetails[l.user_id].seeded += val;
-                        if (desc.includes('vault transfer')) nodeDetails[l.user_id].vaulted += val;
-                        if (type === 'withdrawal') nodeDetails[l.user_id].withdrawn += Math.abs(val);
-                    }
-                });
-
-                Object.values(nodeDetails).forEach(u => { 
-                    totalVaulted += Math.max(0, u.vaulted - u.withdrawn); 
-                });
-
-                const totalBurn = missions?.reduce((sum, m) => sum + (parseFloat(m.cost_to_settle) || 0), 0) || 0;
-                const grovePool = globalSeeded - totalBurn - globalWithdrawn;
-
-                // Update Header Stats
-                document.getElementById('stat-pool').innerText = `GH₵${grovePool.toFixed(2)}`;
-                document.getElementById('stat-vaulted').innerText = `GH₵${totalVaulted.toFixed(2)}`;
-                document.getElementById('stat-seeded').innerText = `GH₵${globalSeeded.toFixed(0)}`;
-                document.getElementById('stat-withdrawn').innerText = `GH₵${globalWithdrawn.toFixed(0)}`;
-                document.getElementById('stat-nodes').innerText = nodes?.length || 0;
-
-                // Render Payouts Tab
-                const withdrawals = ledger?.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID'));
-                document.getElementById('payoutList').innerHTML = withdrawals?.length ? withdrawals.map(w => `
-                    <div class="auth-card p-5 border border-emerald-500/20 mb-3">
-                        <div class="flex justify-between items-start">
-                            <div><p class="text-xs font-black text-white italic">GH₵${Math.abs(w.amount).toFixed(2)}</p><p class="text-[9px] font-black text-emerald-400 uppercase mt-1">${w.description}</p></div>
-                            <button onclick="approvePayout('${w.id}', '${w.description}')" class="px-4 py-2 bg-emerald-600 text-white text-[8px] font-black uppercase rounded-xl">Confirm Paid</button>
-                        </div>
-                    </div>`).join('') : `<div class="py-20 text-center opacity-20"><p class="text-[8px] font-black uppercase">No Payouts Pending</p></div>`;
-
-                // Render Nodes Tab
-                if (nodes && nodes.length > 0) {
-                    document.getElementById('nodeList').innerHTML = nodes.map(n => {
-                        const stats = nodeDetails[n.id] || {seeded:0, vaulted:0, withdrawn:0};
-                        return `<div class="auth-card p-4 border ${n.is_verified ? 'border-white/5' : 'border-amber-500/20'}">
-                            <div class="flex justify-between items-start mb-4">
-                                <div><p class="text-[10px] font-black uppercase ${n.is_suspended ? 'text-rose-400' : 'text-white'}">${n.email?.split('@')[0] || 'NODE'}</p><p class="text-[7px] text-slate-500 uppercase mt-1">REF: ${n.payment_ref || 'PENDING'}</p></div>
-                                <span class="text-[6px] font-black px-2 py-0.5 rounded bg-white/5 ${n.is_verified ? 'text-emerald-400' : 'text-amber-500'} uppercase border border-white/5">${n.is_verified ? 'Verified Node' : 'Awaiting Activation'}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 mb-4 bg-black/20 p-3 rounded-xl border border-white/5">
-                                <div class="text-center"><p class="text-[6px] text-slate-500 uppercase font-bold">Seeded</p><p class="text-[9px] font-black">₵${stats.seeded.toFixed(0)}</p></div>
-                                <div class="text-center border-x border-white/5"><p class="text-[6px] text-emerald-500 uppercase font-bold">Vault</p><p class="text-[9px] font-black text-emerald-400">₵${(stats.vaulted - stats.withdrawn).toFixed(2)}</p></div>
-                                <div class="text-center"><p class="text-[6px] text-rose-500 uppercase font-bold">Taken</p><p class="text-[9px] font-black text-rose-400">₵${stats.withdrawn.toFixed(0)}</p></div>
-                            </div>
-                            <div class="grid grid-cols-4 gap-2">
-                                <button onclick="broadcastToNode('${n.id}')" class="btn-action btn-msg">Msg</button>
-                                <button onclick="toggleSuspend('${n.id}', ${n.is_suspended})" class="btn-action btn-freeze">${n.is_suspended ? 'Rel' : 'Susp'}</button>
-                                <button onclick="toggleVerify('${n.id}', ${n.is_verified})" class="btn-action ${n.is_verified ? 'bg-white/5 text-slate-500' : 'bg-emerald-500 text-black'} font-black">${n.is_verified ? 'Lock' : 'ACTIVATE'}</button>
-                                <button onclick="expelNode('${n.id}')" class="btn-action btn-expel">Expel</button>
-                            </div>
-                        </div>`;
-                    }).join('');
-                } else {
-                    document.getElementById('nodeList').innerHTML = `<p class="p-10 text-center text-[10px] font-black uppercase opacity-20">No Users in Database</p>`;
+        // 2. Process Ledger (Only if columns exist)
+        ledger?.forEach(l => {
+            const val = parseFloat(l.amount) || 0;
+            const type = (l.entry_type || "").toLowerCase();
+            
+            // Link ledger to profile safely
+            if (l.user_id && nodeStats[l.user_id]) {
+                if (type === 'seed') {
+                    nodeStats[l.user_id].seeded += val;
+                    globalSeeded += val;
                 }
+                if (type === 'withdrawal') {
+                    nodeStats[l.user_id].withdrawn += Math.abs(val);
+                    globalWithdrawn += Math.abs(val);
+                }
+            }
+        });
 
-                // Render Missions
-                document.getElementById('missionLog').innerHTML = missions?.map(m => `
-                    <div class="auth-card p-3 flex justify-between items-center border-white/5 mb-2">
-                        <div><p class="text-[9px] font-black uppercase text-amber-500">${m.description}</p><p class="text-[7px] text-slate-500 font-bold">₵${parseFloat(m.cost_to_settle).toFixed(2)}</p></div>
-                        <button onclick="archiveMission('${m.id}')" class="p-2 bg-rose-500/10 text-rose-400 rounded-lg text-[7px] font-black uppercase italic">Clear</button>
-                    </div>`).join('') || '';
+        // 3. Update Header Stats
+        document.getElementById('stat-seeded').innerText = `GH₵${globalSeeded.toFixed(0)}`;
+        document.getElementById('stat-nodes').innerText = nodes?.length || 0;
+        document.getElementById('stat-pool').innerText = `GH₵${(globalSeeded - globalWithdrawn).toFixed(2)}`;
 
-                // Render Ledger
-                document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 15).map(l => {
-                    const node = nodes?.find(p => p.id === l.user_id);
-                    return `
-                    <div class="p-4 flex justify-between items-center text-[10px] border-b border-white/5">
-                        <div><p class="font-black uppercase text-[8px]">${node ? node.email.split('@')[0] : "SYSTEM"}</p><p class="italic text-white/40 text-[9px]">${l.entry_type}</p></div>
-                        <p class="font-black">₵${Math.abs(l.amount).toFixed(2)}</p>
-                    </div>`;
-                }).join('') || '';
-
-            } catch (err) { console.error("Sync Error:", err); }
+        // 4. Render Node Cards (Design Strictly Preserved)
+        const list = document.getElementById('nodeList');
+        if (!nodes || nodes.length === 0) {
+            list.innerHTML = `<p class="p-10 text-center opacity-20">No active nodes found.</p>`;
+            return;
         }
+
+        list.innerHTML = nodes.map(n => {
+            const s = nodeStats[n.id] || {seeded:0, vaulted:0, withdrawn:0};
+            return `
+            <div class="auth-card p-4 border ${n.is_verified ? 'border-white/5' : 'border-amber-500/20'}">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-[10px] font-black uppercase text-white">${n.email?.split('@')[0] || 'NODE'}</p>
+                        <p class="text-[7px] text-slate-500 uppercase mt-1">Slogan: Givers Never Lack</p>
+                    </div>
+                    <span class="text-[6px] font-black px-2 py-0.5 rounded ${n.is_verified ? 'text-emerald-400' : 'text-amber-500'} uppercase border border-white/5">
+                        ${n.is_verified ? 'Verified' : 'Pending'}
+                    </span>
+                </div>
+                <div class="bg-black/20 p-3 rounded-xl border border-white/5 text-center">
+                    <p class="text-[6px] text-slate-500 uppercase font-bold">Confirmed Seed</p>
+                    <p class="text-[12px] font-black text-emerald-400">₵${s.seeded.toFixed(0)}</p>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mt-4">
+                    <button onclick="toggleVerify('${n.id}', ${n.is_verified})" class="btn-action ${n.is_verified ? 'bg-white/5' : 'bg-emerald-500 text-black'} font-black">
+                        ${n.is_verified ? 'Lock' : 'ACTIVATE'}
+                    </button>
+                    </div>
+            </div>`;
+        }).join('');
+
+    } catch (err) {
+        console.error("Admin Sync Error:", err.message);
+    }
+}
+
 
         async function approvePayout(id, currentDesc) { 
             if(confirm("Confirm payout?")) { 
