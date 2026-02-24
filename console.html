@@ -136,6 +136,14 @@
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         let adminUser = null;
 
+        // Add this inside your <script> tag to handle the 2% rule
+function calculateWithdrawal(amount) {
+    const fee = amount * 0.02;
+    const final = amount - fee;
+    return { fee, final };
+}
+
+
         async function sync() {
             const { data: { user } } = await _gv.auth.getUser();
             adminUser = user;
@@ -146,6 +154,7 @@
             let globalSeeded = 0, globalWithdrawn = 0, totalVaulted = 0;
             const nodeDetails = {};
             nodes?.forEach(n => { nodeDetails[n.id] = { seeded: 0, vaulted: 0, withdrawn: 0, email: n.email }; });
+            
 
             ledger?.forEach(l => {
                 const val = parseFloat(l.amount) || 0;
