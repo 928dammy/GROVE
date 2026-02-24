@@ -9,18 +9,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --emerald: #10b981; --grove-deep: #020617; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--grove-deep); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; color: white; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--grove-deep); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; color: white; transition: opacity 0.8s ease; }
         .login-card { width: 100%; max-width: 320px; padding: 2.5rem; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 3rem; backdrop-filter: blur(20px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
         .input-field { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); color: white; transition: all 0.3s ease; }
         .input-field:focus { border-color: var(--emerald); background: rgba(16, 185, 129, 0.05); outline: none; }
+        
+        /* Transition Animation Classes */
+        .status-sync { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+        .loader { width: 24px; height: 24px; border: 2px solid rgba(16, 185, 129, 0.2); border-top-color: var(--emerald); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="login-card">
+    <div class="login-card" id="main-card">
         <div class="text-center mb-10">
             <h1 class="text-xl font-black italic tracking-tighter">MANAGER TERMINAL</h1>
             <p class="text-[8px] font-bold text-emerald-500/60 uppercase tracking-[0.3em] mt-2">Authorized Access Only</p>
         </div>
+
+        <div id="handshake-area" class="hidden status-sync">
+            <div id="loader-icon" class="loader"></div>
+            <p id="status-text" class="text-[8px] font-black text-emerald-500 uppercase tracking-[0.4em] animate-pulse">Syncing Identity...</p>
+        </div>
+
         <form id="admin-form" class="space-y-4">
             <input type="email" id="email" required placeholder="928dammy@aol.com" class="input-field w-full px-5 py-4 rounded-2xl text-xs font-semibold">
             <input type="password" id="password" required placeholder="••••••••" class="input-field w-full px-5 py-4 rounded-2xl text-xs font-semibold">
@@ -30,16 +41,23 @@
     </div>
 
     <script>
-        // Use your hardcoded credentials here
         const SB_URL = "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
 
         document.getElementById('admin-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const form = document.getElementById('admin-form');
             const btn = document.getElementById('login-btn');
             const err = document.getElementById('error-msg');
-            btn.innerText = "VERIFYING...";
+            const handshake = document.getElementById('handshake-area');
+            const statusText = document.getElementById('status-text');
+            const loader = document.getElementById('loader-icon');
+            
+            // Start Visual Transition
+            form.classList.add('hidden');
+            err.classList.add('hidden');
+            handshake.classList.remove('hidden');
             
             try {
                 const { data, error: authError } = await _gv.auth.signInWithPassword({
@@ -54,13 +72,24 @@
 
                 if (dbError || !admin) throw new Error("ID NOT AUTHORIZED IN ADMIN TABLE");
 
-                // SUCCESS: MOVE TO CONSOLE
-                alert("Identity Verified. Proceeding to console.html");
-                window.location.href = "console.html";
+                // SUCCESS SEQUENCE
+                statusText.innerText = "IDENTITY CONFIRMED";
+                loader.style.animation = "none";
+                loader.innerHTML = `<svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
+                loader.classList.remove('loader');
+                
+                setTimeout(() => {
+                    document.body.style.opacity = '0';
+                    setTimeout(() => {
+                        window.location.href = "console.html";
+                    }, 800);
+                }, 1000);
 
             } catch (errObj) {
-                btn.innerText = "ESTABLISH CONNECTION";
-                err.innerText = errObj.message;
+                // Revert UI on Error
+                handshake.classList.add('hidden');
+                form.classList.remove('hidden');
+                err.innerText = errObj.message.toUpperCase();
                 err.classList.remove('hidden');
             }
         });
