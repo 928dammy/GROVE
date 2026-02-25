@@ -80,7 +80,6 @@
         }
         .net-badge.show { opacity: 1; transform: translateX(0); }
         
-        /* LOGO STYLING FOR INPUT FIELD */
         .net-logo { 
             width: 20px; 
             height: 14px; 
@@ -116,7 +115,7 @@
             <input type="text" id="reg-name" placeholder="Full Name" class="input-box">
             
             <div class="relative">
-                <input type="tel" id="reg-phone" placeholder="MoMo Number (024...)" class="input-box" oninput="detectNetwork(this.value)">
+                <input type="tel" id="reg-phone" placeholder="MoMo Number (024...)" class="input-box" maxlength="10" oninput="detectNetwork(this.value)">
                 <div id="net-badge" class="net-badge">
                     <div id="net-logo" class="net-logo"></div>
                     <span id="net-name" class="text-[7px] font-black uppercase"></span>
@@ -196,6 +195,14 @@
             const amt = document.getElementById('gift-slider').value;
             const ref = document.getElementById('unique-ref').innerText;
 
+            // VALIDATION: RESET UI IF NOT EXACTLY 10 DIGITS
+            if (phone.length !== 10) {
+                badge.classList.remove('show');
+                merchDisp.innerText = "Awaiting Network...";
+                dialer.href = "javascript:void(0)";
+                return "UNKNOWN";
+            }
+
             if (phone.match(/^(024|054|055|059|025|053)/)) {
                 badge.classList.add('show');
                 logo.style.backgroundImage = `url('${NET_LOGOS.MTN}')`;
@@ -219,7 +226,7 @@
                 return "AT";
             } else {
                 badge.classList.remove('show');
-                merchDisp.innerText = "Awaiting Network...";
+                merchDisp.innerText = "Unknown Network";
                 dialer.href = "javascript:void(0)";
                 return "UNKNOWN";
             }
@@ -254,6 +261,7 @@
             const network = detectNetwork(phone);
 
             if(!name || !phone || !email || !password || ref === "----") return showStatus("All fields are mandatory.", "error");
+            if(phone.length !== 10) return showStatus("Invalid Phone Number.", "error");
 
             btn.disabled = true;
             btn.innerText = "SYNCHRONIZING...";
