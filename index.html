@@ -79,7 +79,15 @@
             transform: translateX(10px);
         }
         .net-badge.show { opacity: 1; transform: translateX(0); }
-        .net-logo { width: 14px; height: 14px; border-radius: 3px; }
+        
+        /* LOGO STYLING FOR INPUT FIELD */
+        .net-logo { 
+            width: 20px; 
+            height: 14px; 
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
 
         .hint-text { font-size: 7px; color: #64748b; text-align: center; margin-top: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
     </style>
@@ -150,6 +158,12 @@
         const MERCHANT_TEL = "020XXXXXXX";
         const MERCHANT_AT = "026XXXXXXX";
 
+        const NET_LOGOS = {
+            MTN: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/MTN_Logo.svg/1200px-MTN_Logo.svg.png",
+            TELECEL: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Telecel_Group_Logo.png/600px-Telecel_Group_Logo.png",
+            AT: "https://upload.wikimedia.org/wikipedia/commons/1/1d/AirtelTigo_Logo.png"
+        };
+
         function toggleAuth(mode) {
             document.getElementById('login-form').classList.toggle('hidden', mode === 'signup');
             document.getElementById('signup-form').classList.toggle('hidden', mode === 'login');
@@ -184,21 +198,21 @@
 
             if (phone.match(/^(024|054|055|059|025|053)/)) {
                 badge.classList.add('show');
-                logo.style.background = "#fbbf24";
+                logo.style.backgroundImage = `url('${NET_LOGOS.MTN}')`;
                 name.innerText = "MTN"; name.style.color = "#fbbf24";
                 merchDisp.innerText = `RECIPIENT: ${MERCHANT_MTN} (MTN)`;
                 dialer.href = `tel:*170*1*1*${MERCHANT_MTN}*${MERCHANT_MTN}*${amt}*${ref}#`;
                 return "MTN";
             } else if (phone.match(/^(020|050)/)) {
                 badge.classList.add('show');
-                logo.style.background = "#ef4444";
+                logo.style.backgroundImage = `url('${NET_LOGOS.TELECEL}')`;
                 name.innerText = "TELECEL"; name.style.color = "#ef4444";
                 merchDisp.innerText = `RECIPIENT: ${MERCHANT_TEL} (TELECEL)`;
                 dialer.href = `tel:*110*1*1*${MERCHANT_TEL}*${amt}#`;
                 return "TELECEL";
             } else if (phone.match(/^(026|056|027|057)/)) {
                 badge.classList.add('show');
-                logo.style.background = "#3b82f6";
+                logo.style.backgroundImage = `url('${NET_LOGOS.AT}')`;
                 name.innerText = "AT"; name.style.color = "#3b82f6";
                 merchDisp.innerText = `RECIPIENT: ${MERCHANT_AT} (AT)`;
                 dialer.href = `tel:*110*1*1*${MERCHANT_AT}*${amt}#`;
@@ -246,7 +260,6 @@
             btn.style.opacity = "0.6";
 
             try {
-                // 1. Check for existing node
                 const { data: exist } = await _gv.from('profiles').select('id').eq('email', email).maybeSingle();
                 if (exist) {
                     showStatus("Node already exists.", "error");
@@ -254,7 +267,6 @@
                     return;
                 }
 
-                // 2. Sign up with Metadata (Crucial for SQL trigger)
                 const { data, error: authErr } = await _gv.auth.signUp({
                     email,
                     password,
@@ -270,16 +282,12 @@
                 if (authErr) throw authErr;
                 
                 if (data?.user) {
-                    // Small delay to allow SQL trigger to finish
                     await new Promise(r => setTimeout(r, 1500));
-
-                    // 3. Update profile with supplemental data
                     await _gv.from('profiles').update({ 
                         payment_ref: ref, 
                         current_range_max: gift 
                     }).eq('id', data.user.id);
 
-                    // 4. Register the seed in the ledger
                     await _gv.from('ledger').insert([{ 
                         user_id: data.user.id, 
                         amount: gift, 
