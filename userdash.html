@@ -64,9 +64,10 @@
             background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
-            height: 45px;
+            height: 40px;
             width: 100%;
-            transition: 0.3s;
+            display: block;
+            margin: 0 auto 15px auto;
         }
     </style>
 </head>
@@ -78,7 +79,7 @@
         <p class="text-[8px] font-black text-amber-500 uppercase italic mb-1">Node Lockout</p>
         <h3 class="text-lg font-black text-white italic mb-4 uppercase">Activation</h3>
         <div class="bg-black/40 rounded-2xl p-5 mb-4">
-            <div id="p-net-logo" class="mb-4"></div>
+            <div id="p-net-logo"></div>
             
             <div class="space-y-2 text-[9px] font-black uppercase">
                 <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">Gifter Range</span><span class="text-white">₵<span id="p-range-min">0</span> - ₵<span id="p-range-max">0</span></span></div>
@@ -194,15 +195,22 @@
                     document.getElementById('p-range-max').innerText = profile.current_range_max || 0;
                     document.getElementById('p-ref').innerText = profile.payment_ref || "GROVE";
 
-                    // NETWORK LOGO LOGIC
+                    // IMPROVED LOGO LOGIC
                     const logoEl = document.getElementById('p-net-logo');
-                    const net = (profile.network || '').toLowerCase();
+                    const net = (profile.network || '').toLowerCase().trim();
                     const logos = {
                         'mtn': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png',
                         'telecel': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Telecel_Logo.svg/1200px-Telecel_Logo.svg.png',
-                        'at': 'https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png'
+                        'at': 'https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png',
+                        'airteltigo': 'https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png'
                     };
-                    logoEl.style.backgroundImage = logos[net] ? `url('${logos[net]}')` : 'none';
+                    
+                    if(logos[net]) {
+                        logoEl.style.backgroundImage = `url('${logos[net]}')`;
+                        logoEl.style.display = 'block';
+                    } else {
+                        logoEl.style.display = 'none';
+                    }
                 }
             } else {
                 document.body.classList.remove('withered');
