@@ -56,11 +56,11 @@
 
         <div class="grid grid-cols-2 gap-2">
             <div class="flex justify-between items-center bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                <p class="text-[5px] font-black text-slate-500 uppercase">Sunk</p>
+                <p class="text-[5px] font-black text-slate-500 uppercase">Total Seeded</p>
                 <p id="stat-sunk" class="text-[9px] font-black text-white">₵0.00</p>
             </div>
             <div class="flex justify-between items-center bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/20">
-                <p class="text-[5px] font-black text-blue-500 uppercase">Pool</p>
+                <p class="text-[5px] font-black text-blue-500 uppercase">Grove Pool (Health)</p>
                 <p id="stat-pool" class="text-[9px] font-black text-blue-400">₵0.00</p>
             </div>
         </div>
@@ -113,10 +113,10 @@
         <section id="harvests" class="tab-content">
             <div class="space-y-4">
                 <div class="auth-card p-5 border-l-4 border-blue-500">
-                    <p class="text-[9px] font-black uppercase text-blue-400 mb-3">System Liquidity Injection</p>
+                    <p class="text-[9px] font-black uppercase text-blue-400 mb-3">System Liquidity Injection (SLI)</p>
                     <div class="flex gap-2">
                         <input type="number" id="injectAmt" placeholder="Amount" class="input-box flex-1">
-                        <button onclick="injectSystemFunds()" class="bg-blue-600 px-6 rounded-xl font-black text-[9px]">FUND</button>
+                        <button onclick="injectSystemFunds()" class="bg-blue-600 px-6 rounded-xl font-black text-[9px]">INJECT</button>
                     </div>
                 </div>
                 <div class="auth-card p-5 border-l-4 border-emerald-500">
@@ -130,7 +130,7 @@
         </section>
 
         <section id="payouts" class="tab-content">
-            <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Withdrawal Queue (-2% FEE)</p>
+            <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Withdrawal Queue (-2% SERVICE FEE)</p>
             <div id="payoutList" class="space-y-3"></div>
         </section>
 
@@ -153,8 +153,8 @@
         const SB_URL = "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
-        const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000";
-        let allNodes=[], allMsgs=[], currentChatId=null, globalPoolBalance=0;
+        const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000"; // Internal System ID
+        let allNodes=[], allMsgs=[], currentChatId=null;
 
         async function sync() {
             const { data: profiles } = await _gv.from('profiles').select('*');
@@ -165,70 +165,71 @@
             allNodes = profiles || []; 
             allMsgs = messages || [];
 
-            let sunk=0, pool=0;
+            // GROVE POOL LOGIC: 
+            // Calculated by: All Seeds + All SLI + All Service Charges - All NET Withdrawals
+            let totalSeeded = 0;
+            let currentPool = 0;
+
             ledger?.forEach(l => {
-                // If entry is a seed from a user, count as Sunk. Everything else is Ultimate Liquidity (Pool)
-                if(l.entry_type === 'seed') sunk += Math.abs(l.amount);
-                else pool += l.amount;
+                if(l.entry_type === 'seed') totalSeeded += Math.abs(l.amount);
+                currentPool += l.amount; // Ledger handles balance naturally (positive/negative)
             });
 
-            globalPoolBalance = pool;
-            document.getElementById('stat-sunk').innerText = `₵${sunk.toFixed(2)}`;
-            document.getElementById('stat-pool').innerText = `₵${pool.toFixed(2)}`;
+            document.getElementById('stat-sunk').innerText = `₵${totalSeeded.toFixed(2)}`;
+            document.getElementById('stat-pool').innerText = `₵${currentPool.toFixed(2)}`;
+            
             document.getElementById('total-nodes-count').innerText = allNodes.length;
             document.getElementById('active-nodes-count').innerText = allNodes.filter(n=>n.is_verified).length;
             document.getElementById('pending-nodes-count').innerText = allNodes.filter(n=>!n.is_verified).length;
-            document.getElementById('online-nodes-count').innerText = Math.floor(allNodes.length * 0.8);
+            document.getElementById('online-nodes-count').innerText = Math.floor(allNodes.length * (0.7 + Math.random()*0.2));
 
             const search = document.getElementById('nodeSearch').value.toLowerCase();
             document.getElementById('nodeList').innerHTML = allNodes.filter(n => n.email?.toLowerCase().includes(search) || n.full_name?.toLowerCase().includes(search)).map(n => {
-                const uL = ledger?.filter(l => l.user_id === n.id) || [];
-                const s = uL.filter(l => l.entry_type === 'seed').reduce((a,b)=>a+b.amount,0);
-                const v = uL.filter(l => l.description.includes('Vaulted')).reduce((a,b)=>a+Math.abs(b.amount),0);
-                const c = uL.filter(l => l.description.includes('PAID')).reduce((a,b)=>a+Math.abs(b.amount),0);
+                const userLedger = ledger?.filter(l => l.user_id === n.id) || [];
+                const seeds = userLedger.filter(l => l.entry_type === 'seed').reduce((a,b)=>a+b.amount,0);
+                const vault = userLedger.filter(l => l.description.includes('Vaulted')).reduce((a,b)=>a+Math.abs(b.amount),0);
+                const claims = userLedger.filter(l => l.description.includes('PAID')).reduce((a,b)=>a+Math.abs(b.amount),0);
 
                 return `
                 <div class="auth-card p-4 border-l-2 ${n.is_verified ? 'border-emerald-500' : 'border-rose-500 animate-pulse'}">
                     <div class="flex justify-between mb-3">
                         <div>
-                            <p class="text-[10px] font-black uppercase text-white">${n.full_name || 'PENDING'}</p>
+                            <p class="text-[10px] font-black uppercase text-white">${n.full_name || 'PENDING NODE'}</p>
                             <p class="text-[6px] text-slate-500 font-bold">${n.email}</p>
                         </div>
-                        <div class="text-right">
-                             <p class="text-[8px] font-black ${n.is_verified ? 'text-emerald-500' : 'text-rose-500'}">${n.is_verified ? 'ACTIVE' : 'LOCKED'}</p>
-                        </div>
+                        <p class="text-[8px] font-black ${n.is_verified ? 'text-emerald-500' : 'text-rose-500'}">${n.is_verified ? 'VERIFIED' : 'LOCKED'}</p>
                     </div>
                     <div class="grid grid-cols-3 gap-2 bg-white/5 p-2 rounded-lg text-center border border-white/5">
-                        <div><p class="text-[8px] font-black text-white">₵${s.toFixed(2)}</p><p class="text-[5px] text-slate-500 uppercase font-black">Seed</p></div>
-                        <div class="border-x border-white/10"><p class="text-[8px] font-black text-emerald-400">₵${v.toFixed(2)}</p><p class="text-[5px] text-slate-500 uppercase font-black">Vault</p></div>
-                        <div><p class="text-[8px] font-black text-amber-400">₵${c.toFixed(2)}</p><p class="text-[5px] text-slate-500 uppercase font-black">Claim</p></div>
+                        <div><p class="text-[8px] font-black text-white">₵${seeds.toFixed(2)}</p><p class="text-[5px] text-slate-500 uppercase font-black">Seeded</p></div>
+                        <div class="border-x border-white/10"><p class="text-[8px] font-black text-emerald-400">₵${vault.toFixed(2)}</p><p class="text-[5px] text-slate-500 uppercase font-black">Vault</p></div>
+                        <div><p class="text-[8px] font-black text-amber-400">₵${claims.toFixed(2)}</p><p class="text-[5px] text-slate-500 uppercase font-black">Claimed</p></div>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-3">
-                         <button onclick="nodeOp('${n.id}', '${n.is_verified ? 'unverify' : 'verify'}')" class="btn-action ${n.is_verified ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500 text-black'}">${n.is_verified ? 'FREEZE' : 'RELEASE'}</button>
-                         <button onclick="openUserChat('${n.id}')" class="btn-action bg-white/10 text-white">Chat</button>
-                         <button onclick="deleteNode('${n.id}')" class="btn-action bg-rose-500/20 text-rose-500 col-span-2 mt-1 border border-rose-500/30">TERMINATE NODE</button>
+                         <button onclick="nodeOp('${n.id}', '${n.is_verified ? 'unverify' : 'verify'}')" class="btn-action ${n.is_verified ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500 text-black'}">${n.is_verified ? 'Freeze' : 'Verify'}</button>
+                         <button onclick="openUserChat('${n.id}')" class="btn-action bg-white/10 text-white">Direct Chat</button>
                     </div>
                 </div>`;
             }).join('');
 
-            const wd = ledger?.filter(l => l.entry_type === 'withdrawal' && l.user_id !== SYSTEM_ADMIN_ID && !l.description.includes('PAID')) || [];
-            document.getElementById('payoutList').innerHTML = wd.map(w => {
+            // Payouts Logic with 2% deduction
+            const pendingPayouts = ledger?.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID')) || [];
+            document.getElementById('payoutList').innerHTML = pendingPayouts.map(w => {
                 const node = allNodes.find(n => n.id === w.user_id);
-                const net = Math.abs(w.amount) * 0.98; // 2% service charge deduction logic
+                const charge = Math.abs(w.amount) * 0.02;
+                const net = Math.abs(w.amount) - charge;
                 return `<div class="auth-card p-4 flex justify-between items-center">
-                    <div><p class="text-[9px] font-black uppercase text-white">${node?.full_name || 'NODE'}</p><p class="text-[7px] text-emerald-500 font-black">₵${net.toFixed(2)} NET (-2%)</p></div>
-                    <button onclick="approvePayout('${w.id}','${w.user_id}',${Math.abs(w.amount)})" class="bg-emerald-600 px-4 py-2 rounded-lg text-[8px] font-black">APPROVE</button>
+                    <div>
+                        <p class="text-[9px] font-black uppercase text-white">${node?.full_name || 'UNKNOWN'}</p>
+                        <p class="text-[7px] text-emerald-500 font-black">₵${net.toFixed(2)} NET <span class="text-rose-400">(-₵${charge.toFixed(2)} Fee)</span></p>
+                    </div>
+                    <button onclick="approvePayout('${w.id}','${w.user_id}',${Math.abs(w.amount)})" class="bg-emerald-600 px-4 py-2 rounded-lg text-[8px] font-black">APPROVE & PAY</button>
                 </div>`;
-            }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">Queue Empty</p>';
+            }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">No pending withdrawals</p>';
 
-            document.getElementById('missionList').innerHTML = events?.filter(e => e.type === 'mission').map(m => `
-                <div class="auth-card p-4"><p class="text-[9px] font-black text-amber-500 uppercase">${m.title}</p><p class="text-[8px] text-slate-400 mt-1">${m.description}</p><p class="text-[8px] font-black mt-2">GOAL: ₵${m.value}</p></div>
-            `).join('');
-
-            document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 30).map(l => `
+            document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 40).map(l => `
                 <div class="flex justify-between items-center p-3 border-b border-white/5">
                     <div><p class="text-[8px] font-black uppercase text-slate-200">${l.description}</p><p class="text-[5px] text-slate-500">${new Date(l.created_at).toLocaleString()}</p></div>
-                    <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
+                    <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">${l.amount < 0 ? '-' : '+'}₵${Math.abs(l.amount).toFixed(2)}</p>
                 </div>
             `).join('');
 
@@ -236,9 +237,41 @@
             updateNavBadge();
         }
 
-        async function deleteNode(id) {
-            if(confirm("PERMANENTLY TERMINATE THIS NODE? Action irreversible.")) {
-                await _gv.from('profiles').delete().eq('id', id);
+        async function injectSystemFunds() {
+            const amt = parseFloat(document.getElementById('injectAmt').value);
+            if(!amt || amt <= 0) return alert("Enter valid amount");
+            
+            // Add positive amount to ledger to increase Pool
+            const { error } = await _gv.from('ledger').insert([{
+                user_id: SYSTEM_ADMIN_ID,
+                amount: amt,
+                entry_type: 'sli',
+                description: `SYSTEM LIQUIDITY INJECTION (SLI)`
+            }]);
+
+            if(!error) {
+                alert("POOL INJECTED SUCCESSFULLY");
+                document.getElementById('injectAmt').value = '';
+                sync();
+            }
+        }
+
+        async function approvePayout(ledgerId, userId, fullAmount) {
+            const charge = fullAmount * 0.02;
+            const net = fullAmount - charge;
+
+            if(confirm(`Approve payment of ₵${net.toFixed(2)}? 2% Fee (₵${charge.toFixed(2)}) will remain in Grove Pool.`)) {
+                // 1. Mark the original request as PAID
+                await _gv.from('ledger').update({ description: 'CLAIM PAID & COMPLETED' }).eq('id', ledgerId);
+                
+                // 2. Re-inject the 2% fee into the pool as a service charge
+                await _gv.from('ledger').insert([{
+                    user_id: SYSTEM_ADMIN_ID,
+                    amount: charge,
+                    entry_type: 'service_charge',
+                    description: `SERVICE CHARGE FROM ${userId.slice(0,5)}`
+                }]);
+
                 sync();
             }
         }
@@ -249,19 +282,15 @@
             const { data } = await _gv.from('profiles').select('id').eq('email', email).single();
             if(data) {
                 await _gv.from('profiles').update({ is_verified: true }).eq('id', data.id);
-                alert("STORM LOCKOUT LIFTED");
+                alert("NODE VERIFIED");
                 sync();
-            } else alert("Node not found");
+            } else alert("Email not found");
         }
 
         async function openUserChat(id) {
             currentChatId = id; 
-            // Switch tab view to Messages
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.getElementById('messages').classList.add('active');
-            document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
-            document.querySelector('[onclick*="messages"]').classList.add('active');
-            
             document.getElementById('inboxView').classList.add('view-hidden');
             document.getElementById('chatView').classList.remove('view-hidden');
             document.getElementById('activeChatName').innerText = allNodes.find(n => n.id === id)?.full_name || 'NODE';
@@ -273,8 +302,6 @@
             const { data } = await _gv.from('messages').select('*').or(`and(sender_id.eq.${currentChatId},receiver_id.eq.${SYSTEM_ADMIN_ID}),and(sender_id.eq.${SYSTEM_ADMIN_ID},receiver_id.eq.${currentChatId})`).order('created_at', { ascending: true });
             document.getElementById('adminChatBox').innerHTML = data?.map(m => `<div class="w-full flex ${m.sender_id === SYSTEM_ADMIN_ID ? 'justify-end' : 'justify-start'}"><div class="${m.sender_id === SYSTEM_ADMIN_ID ? 'bubble-out' : 'bubble-in'}">${m.content}</div></div>`).join('');
             document.getElementById('adminChatBox').scrollTop = document.getElementById('adminChatBox').scrollHeight;
-            await _gv.from('messages').update({ is_read: true }).match({ sender_id: currentChatId, receiver_id: SYSTEM_ADMIN_ID });
-            updateNavBadge();
         }
 
         async function sendAdminReply() {
@@ -302,20 +329,18 @@
         function renderInbox() {
             document.getElementById('contactList').innerHTML = allNodes.map(n => {
                 const unreads = allMsgs.filter(m => m.sender_id === n.id && m.receiver_id === SYSTEM_ADMIN_ID && !m.is_read).length;
-                return `<div onclick="openUserChat('${n.id}')" class="p-4 auth-card flex justify-between items-center cursor-pointer hover:bg-white/5 active:scale-[0.98] transition-all">
-                    <p class="text-[10px] font-black uppercase text-white pointer-events-none">${n.full_name || n.email}</p>
-                    ${unreads ? `<span class="bg-emerald-500 text-black text-[8px] font-black px-2 py-1 rounded-full pointer-events-none">${unreads}</span>` : ''}
+                return `<div onclick="openUserChat('${n.id}')" class="p-4 auth-card flex justify-between items-center cursor-pointer">
+                    <p class="text-[10px] font-black uppercase text-white">${n.full_name || n.email}</p>
+                    ${unreads ? `<span class="bg-emerald-500 text-black text-[8px] font-black px-2 py-1 rounded-full">${unreads}</span>` : ''}
                 </div>`;
             }).join('');
         }
-
-        async function logout() { await _gv.auth.signOut(); location.href = 'consoleenter.html'; }
 
         async function init() {
             const { data: { user } } = await _gv.auth.getUser();
             if(!user) location.href = 'consoleenter.html';
             sync();
-            _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => { sync(); if(currentChatId) refreshChat(); }).subscribe();
+            _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
         }
         init();
     </script>
