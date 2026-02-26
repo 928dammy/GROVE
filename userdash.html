@@ -10,18 +10,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --emerald: #10b981; --grove-deep: #061a14; --grove-leaf: #064e3b; --gold: #fbbf24; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; margin: 0; overflow-x: hidden; color: #1e293b; }
         
-        /* THE STORM (SUSPENSION/PENDING) */
-        body.withered { overflow: hidden; background: #020617; }
-        /* Re-enable scrolling when specifically requested */
-        body.can-scroll { overflow-y: auto !important; }
+        /* SCROLLING LOGIC */
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: #f8fafc; 
+            min-height: 100vh; 
+            padding: 1rem; 
+            margin: 0; 
+            color: #1e293b;
+            overflow-x: hidden;
+            overflow-y: auto; /* Default allowed */
+        }
+        
+        /* Locked state when payment card is active */
+        body.withered { 
+            overflow: hidden !important; 
+            background: #020617; 
+        }
 
+        /* THE STORM (SUSPENSION/PENDING) */
         #suspension-overlay { display: none; position: fixed; inset: 0; z-index: 80; background: rgba(2, 6, 23, 0.4); pointer-events: none; }
         body.withered #suspension-overlay { display: block; animation: lightning 5s infinite; }
         @keyframes lightning { 0%, 95%, 98% { background: rgba(2, 6, 23, 0.4); } 96%, 99% { background: rgba(147, 51, 234, 0.15); } }
         .rain-drop { position: absolute; background: rgba(255, 255, 255, 0.1); width: 1px; height: 60px; top: -100px; animation: rainFall 0.7s linear infinite; }
         @keyframes rainFall { to { transform: translateY(110vh); } }
+
+        /* NETWORK BANNER/LOGO FIX */
+        #p-net-logo {
+            width: 100%;
+            height: 45px; /* Forced height */
+            min-height: 45px;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            display: block;
+            margin-bottom: 15px;
+        }
 
         /* SOUL AURA */
         .soul-container { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
@@ -42,35 +67,22 @@
         .tab-content { display: none; padding: 0 1rem 1rem; flex: 1; overflow-y: auto; }
         .tab-content.active { display: flex; flex-direction: column; }
 
-        /* MESSAGING UI */
+        /* CHAT BUBBLES */
         .chat-bubble { padding: 12px 16px; border-radius: 1.25rem; max-width: 85%; font-size: 11px; line-height: 1.4; margin-bottom: 12px; }
         .chat-admin { background: rgba(16, 185, 129, 0.15); border-left: 3px solid var(--emerald); color: white; align-self: flex-start; }
         .chat-user { background: rgba(255, 255, 255, 0.05); color: #94a3b8; align-self: flex-end; border-right: 3px solid rgba(255,255,255,0.2); text-align: right; }
-        .unread-dot { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: #fb7185; border-radius: 50%; border: 2px solid white; display: none; }
-        .unread-dot.active { display: block; }
-
-        /* GARDENER & VAULT */
+        
+        /* VAULT & GARDENER */
         .gardener-emoji { position: absolute; font-size: 40px; bottom: 0; animation: walkAndSowEmoji 8s infinite ease-in-out; }
         @keyframes walkAndSowEmoji { 0% { transform: translateX(0); } 30%, 55% { transform: translateX(80px); } 75%, 100% { transform: translateX(0); } }
         .vault-bg { background: linear-gradient(to bottom, #061a14, #064e3b); border-radius: 2rem; min-height: 340px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; width: 100%; }
         .cedi-symbol { position: absolute; color: rgba(16, 185, 129, 0.15); font-weight: 900; animation: fall linear infinite; }
         @keyframes fall { from { transform: translateY(-50px); opacity: 1; } to { transform: translateY(350px); opacity: 0; } }
-        
-        /* HEADER & ENGINE ROOM */
+
         .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; z-index: 100; }
         .node-menu { position: fixed; top: 75px; right: 2rem; width: 180px; background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 15px 35px rgba(0,0,0,0.15); display: none; z-index: 500; overflow: hidden; }
         .node-menu.active { display: block; }
         .menu-item { width: 100%; padding: 14px 20px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #f8fafc; color: #64748b; cursor: pointer; }
-
-        /* LOGO BOX FIX */
-        #p-net-logo {
-            height: 40px;
-            width: 100%;
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-            display: block;
-        }
     </style>
 </head>
 <body class="max-w-md mx-auto" onclick="closeMenu()">
@@ -80,21 +92,19 @@
     <div id="manual-pay-card" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1000] w-[85%] max-w-[290px] bg-slate-900/95 border border-amber-500/30 rounded-[2.5rem] p-6 text-center shadow-2xl hidden">
         <p class="text-[8px] font-black text-amber-500 uppercase italic mb-1">Node Lockout</p>
         <h3 class="text-lg font-black text-white italic mb-4 uppercase">Activation</h3>
+        
         <div class="bg-black/40 rounded-2xl p-4 mb-4">
-            <div id="p-net-logo" class="mb-3"></div>
+            <div id="p-net-logo"></div>
+            
             <div class="space-y-2 text-[9px] font-black uppercase">
                 <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">Gifter Range</span><span class="text-white">₵<span id="p-range-min">0</span> - ₵<span id="p-range-max">0</span></span></div>
-                <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">Merchant</span><span class="text-amber-400">0535261448</span></div>
+                <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">Merchant</span><span id="p-merchant-num" class="text-amber-400">0535261448</span></div>
                 <div class="pt-2"><p class="text-[7px] text-emerald-500">Reference</p><p id="p-ref" class="text-xl text-white tracking-widest">----</p></div>
             </div>
         </div>
+        
         <p class="text-[9px] font-bold text-slate-500 mb-4 italic">"Givers Never Lack"</p>
-        <button onclick="dismissPayCard()" class="w-full py-3 bg-emerald-600 text-white font-black rounded-xl text-[9px] uppercase">Review Terminal</button>
-    </div>
-
-    <div id="nodeMenu" class="node-menu">
-        <button onclick="sendSupportRequest('PROFILE UPDATE')" class="menu-item">Update Details</button>
-        <button onclick="logout()" class="menu-item text-red-500 font-black">Exit Terminal</button>
+        <button onclick="restoreScroll()" class="w-full py-3 bg-emerald-600 text-white font-black rounded-xl text-[9px] uppercase">Review Terminal</button>
     </div>
 
     <header class="seed-header">
@@ -103,10 +113,7 @@
                 <div class="soul-container"><div class="soul-aura"></div><div class="soul-core"></div></div>
                 <div><h1 class="text-base font-black italic">GROVE</h1><p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase">SYNCING...</p></div>
             </div>
-            <div class="relative">
-                <div id="msg-dot" class="unread-dot"></div>
-                <button onclick="toggleMenu(event)" class="text-[7px] font-black text-slate-400 border px-4 py-1.5 rounded-lg bg-white relative z-[600]">ENGINE ⚙️</button>
-            </div>
+            <button onclick="toggleMenu(event)" class="text-[7px] font-black text-slate-400 border px-4 py-1.5 rounded-lg bg-white relative z-[600]">ENGINE ⚙️</button>
         </div>
         <div class="flex gap-3">
             <div class="flex-1 bg-slate-50 p-4 rounded-2xl border"><p class="text-[8px] font-black text-slate-400 uppercase">Seed Base</p><div id="s-seed" class="text-sm font-black italic">GH₵0.00</div></div>
@@ -153,7 +160,6 @@
                     <input id="chat-input" type="text" placeholder="REPLY TO MISSION..." class="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-5 text-[10px] text-white focus:outline-none">
                     <button onclick="sendMessage()" class="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 font-black text-[9px] uppercase px-3">Send</button>
                 </div>
-                <p class="text-center text-[7px] text-slate-500 uppercase mt-3 font-black tracking-widest italic">"Givers Never Lack"</p>
             </div>
         </section>
 
@@ -170,9 +176,13 @@
                 <div class="flex justify-between text-[9px] font-black border-b pb-2 text-rose-500"><span class="uppercase">Service Charge (2%)</span><span id="m-fee">-GH₵0.00</span></div>
                 <div class="flex justify-between text-base font-black italic"><span>Payout</span><span id="m-final" class="text-emerald-600">GH₵0.00</span></div>
             </div>
-            <button onclick="processWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase shadow-lg">Confirm</button>
+            <button onclick="processWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase">Confirm</button>
             <button onclick="toggleModal('withdrawModal', false)" class="w-full text-[8px] font-black text-slate-400 uppercase py-2 mt-2">Cancel</button>
         </div>
+    </div>
+
+    <div id="nodeMenu" class="node-menu">
+        <button onclick="logout()" class="menu-item text-red-500 font-black">Exit Terminal</button>
     </div>
 
     <script>
@@ -181,13 +191,25 @@
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         let userObj = null, globalVaulted = 0;
 
+        const MERCHANT_MTN = "0535261448";
+        const MERCHANT_TEL = "020XXXXXXX";
+        const MERCHANT_AT = "026XXXXXXX";
+        const NET_LOGOS = {
+            MTN: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png",
+            TELECEL: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Telecel_Logo.svg/1200px-Telecel_Logo.svg.png",
+            AT: "https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png"
+        };
+
         function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
         function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
-        
-        function dismissPayCard() {
+
+        // CORE FIX: HIDE CARD AND ENABLE SCROLLING
+        function restoreScroll() {
             document.getElementById('manual-pay-card').style.display = 'none';
-            document.body.classList.add('can-scroll'); // Re-enables scrolling
+            // Force scrolling back on
+            document.body.style.overflowY = "auto";
+            document.body.style.overflowX = "hidden";
         }
 
         async function sync() {
@@ -196,25 +218,27 @@
             if(!profile || profile.is_verified !== true || profile.is_suspended) {
                 document.body.classList.add('withered');
                 document.getElementById('manual-pay-card').style.display = 'block';
+                
                 if(profile) {
                     document.getElementById('p-range-min').innerText = profile.current_range_min || 0;
                     document.getElementById('p-range-max').innerText = profile.current_range_max || 0;
                     document.getElementById('p-ref').innerText = profile.payment_ref || "GROVE";
 
-                    // DYNAMIC LOGO LOGIC
-                    const logoEl = document.getElementById('p-net-logo');
-                    const net = (profile.network || '').toLowerCase().trim();
-                    const logos = {
-                        'mtn': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png',
-                        'telecel': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Telecel_Logo.svg/1200px-Telecel_Logo.svg.png',
-                        'airteltigo': 'https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png',
-                        'at': 'https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png'
-                    };
-                    logoEl.style.backgroundImage = logos[net] ? `url('${logos[net]}')` : 'none';
+                    // NETWORK & LOGO LOGIC
+                    const net = (profile.network || '').toUpperCase();
+                    const logoDiv = document.getElementById('p-net-logo');
+                    const merchDiv = document.getElementById('p-merchant-num');
+
+                    if (NET_LOGOS[net]) {
+                        logoDiv.style.backgroundImage = `url('${NET_LOGOS[net]}')`;
+                        if(net === 'MTN') merchDiv.innerText = MERCHANT_MTN;
+                        if(net === 'TELECEL') merchDiv.innerText = MERCHANT_TEL;
+                        if(net === 'AT') merchDiv.innerText = MERCHANT_AT;
+                    }
                 }
             } else {
                 document.body.classList.remove('withered');
-                document.body.classList.remove('can-scroll');
+                document.body.style.overflowY = "auto";
                 document.getElementById('manual-pay-card').style.display = 'none';
                 document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
             }
@@ -235,10 +259,10 @@
             
             document.getElementById('ledger-content').innerHTML = ledger?.map(l => `
                 <div class="p-4 flex justify-between items-center text-[10px]">
-                    <div><p class="font-black text-white uppercase">${l.entry_type.replace('_',' ')}</p><p class="text-[7px] text-slate-500 uppercase tracking-tighter">${l.description || ''}</p></div>
+                    <div><p class="font-black text-white uppercase">${l.entry_type.replace('_',' ')}</p><p class="text-[7px] text-slate-500 uppercase">${l.description || ''}</p></div>
                     <p class="font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
                 </div>
-            `).join('') || '<p class="p-4 text-center text-slate-500 text-[8px] uppercase font-black">Syncing Ledger...</p>';
+            `).join('') || '';
             
             await fetchMessages();
         }
@@ -246,22 +270,12 @@
         async function fetchMessages() {
             const { data: msgs } = await _gv.from('messages').select('*').or(`receiver_id.eq.${userObj.id},sender_id.eq.${userObj.id}`).order('created_at', { ascending: true });
             const scroller = document.getElementById('chat-scroller');
-            const dot = document.getElementById('msg-dot');
-            
-            if(msgs?.some(m => !m.is_read && m.receiver_id === userObj.id)) dot.classList.add('active');
-            else dot.classList.remove('active');
-
             scroller.innerHTML = msgs?.map(m => `
                 <div class="flex flex-col ${m.sender_id === userObj.id ? 'items-end' : 'items-start'}">
-                    <div class="chat-bubble ${m.sender_id === userObj.id ? 'chat-user' : 'chat-admin'}">
-                        ${m.content}
-                    </div>
+                    <div class="chat-bubble ${m.sender_id === userObj.id ? 'chat-user' : 'chat-admin'}">${m.content}</div>
                 </div>
-            `).join('') || '<p class="text-center text-slate-600 text-[9px] uppercase py-20">Secure Mission Line Active</p>';
+            `).join('') || '';
             scroller.scrollTop = scroller.scrollHeight;
-
-            const unreadIds = msgs?.filter(m => !m.is_read && m.receiver_id === userObj.id).map(m => m.id);
-            if(unreadIds?.length) await _gv.from('messages').update({ is_read: true }).in('id', unreadIds);
         }
 
         async function sendMessage() {
@@ -293,25 +307,15 @@
             if(!error) { toggleModal('withdrawModal', false); sync(); alert("Logged."); }
         }
 
-        async function loadMissions() {
-            const { data } = await _gv.from('settled_needs').select('*').neq('status', 'ARCHIVED').order('created_at', { ascending: false });
-            if(data?.length) {
-                document.getElementById('ticker-output').innerText = data.map(m => m.description.toUpperCase()).join(' • GIVERS NEVER LACK • ');
-                document.getElementById('m-title-hero').innerText = data[0].description;
-                document.getElementById('m-desc-hero').innerText = data[0].message || "Funded by Givers.";
-            }
-        }
-
         function createRain() { const ov = document.getElementById('suspension-overlay'); for(let i=0; i<30; i++) { const d = document.createElement('div'); d.className = 'rain-drop'; d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() * 2 + 's'; ov.appendChild(d); } }
-        function createCedis() { const box = document.getElementById('cedis-box'); for(let i=0; i<12; i++) { const s = document.createElement('div'); s.className = 'cedi-symbol'; s.innerText = '₵'; s.style.left = Math.random() * 100 + '%'; s.style.animationDuration = (Math.random() * 3 + 2) + 's'; box.appendChild(s); } }
-        function openTab(id) { if(document.body.classList.contains('withered')) return; document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-' + id.split('-')[1]).classList.add('active'); }
+        function openTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-' + id.split('-')[1]).classList.add('active'); }
         async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
 
         async function init() { 
             const { data: { user } } = await _gv.auth.getUser(); 
             if(!user) return window.location.href = "index.html"; 
             userObj = user; 
-            createRain(); createCedis(); sync(); loadMissions();
+            createRain(); sync();
             _gv.channel('realtime-sync').on('postgres_changes', {event:'*', schema:'public'}, () => { sync(); }).subscribe(); 
         }
         init();
