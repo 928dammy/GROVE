@@ -167,7 +167,9 @@
 
             let sunk=0, pool=0;
             ledger?.forEach(l => {
-                if(l.user_id === SYSTEM_ADMIN_ID) pool += l.amount;
+                // If user is Admin or entry is specifically system injection, count as Pool
+                if(l.user_id === SYSTEM_ADMIN_ID || l.entry_type === 'system_injection') pool += l.amount;
+                // If entry is a seed from a user, count as Sunk
                 else if(l.entry_type === 'seed') sunk += Math.abs(l.amount);
             });
 
@@ -212,9 +214,9 @@
             const wd = ledger?.filter(l => l.entry_type === 'withdrawal' && l.user_id !== SYSTEM_ADMIN_ID && !l.description.includes('PAID')) || [];
             document.getElementById('payoutList').innerHTML = wd.map(w => {
                 const node = allNodes.find(n => n.id === w.user_id);
-                const net = Math.abs(w.amount) * 0.98;
+                const net = Math.abs(w.amount) * 0.98; // 2% service charge deduction logic
                 return `<div class="auth-card p-4 flex justify-between items-center">
-                    <div><p class="text-[9px] font-black uppercase text-white">${node?.full_name || 'NODE'}</p><p class="text-[7px] text-emerald-500 font-black">₵${net.toFixed(2)} NET</p></div>
+                    <div><p class="text-[9px] font-black uppercase text-white">${node?.full_name || 'NODE'}</p><p class="text-[7px] text-emerald-500 font-black">₵${net.toFixed(2)} NET (-2%)</p></div>
                     <button onclick="approvePayout('${w.id}','${w.user_id}',${Math.abs(w.amount)})" class="bg-emerald-600 px-4 py-2 rounded-lg text-[8px] font-black">APPROVE</button>
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">Queue Empty</p>';
@@ -286,9 +288,9 @@
         function renderInbox() {
             document.getElementById('contactList').innerHTML = allNodes.map(n => {
                 const unreads = allMsgs.filter(m => m.sender_id === n.id && m.receiver_id === SYSTEM_ADMIN_ID && !m.is_read).length;
-                return `<div onclick="openUserChat('${n.id}')" class="p-4 auth-card flex justify-between items-center cursor-pointer">
-                    <p class="text-[10px] font-black uppercase text-white">${n.full_name || n.email}</p>
-                    ${unreads ? `<span class="bg-emerald-500 text-black text-[8px] font-black px-2 py-1 rounded-full">${unreads}</span>` : ''}
+                return `<div onclick="openUserChat('${n.id}')" class="p-4 auth-card flex justify-between items-center cursor-pointer hover:bg-white/5 active:scale-[0.98] transition-all">
+                    <p class="text-[10px] font-black uppercase text-white pointer-events-none">${n.full_name || n.email}</p>
+                    ${unreads ? `<span class="bg-emerald-500 text-black text-[8px] font-black px-2 py-1 rounded-full pointer-events-none">${unreads}</span>` : ''}
                 </div>`;
             }).join('');
         }
