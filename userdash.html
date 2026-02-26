@@ -13,22 +13,11 @@
         
         /* SCROLL CONTROL */
         html, body { height: 100%; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: #f8fafc; 
-            min-height: 100vh; 
-            padding: 1rem; 
-            color: #1e293b;
-            overflow-x: hidden;
-            overflow-y: auto;
-        }
-        
-        /* State 1: Locked for Activation */
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; color: #1e293b; overflow-x: hidden; overflow-y: auto; }
         body.withered { overflow: hidden !important; height: 100vh !important; background: #020617; }
-        /* State 2: Unlocked for Review/Normal use */
         body.force-scroll { overflow-y: auto !important; height: auto !important; }
 
-        /* ATMOSPHERIC OVERLAY */
+        /* ATMOSPHERICS */
         #suspension-overlay { display: none; position: fixed; inset: 0; z-index: 80; background: rgba(2, 6, 23, 0.4); pointer-events: none; }
         body.withered #suspension-overlay { display: block; animation: lightning 5s infinite; }
         @keyframes lightning { 0%, 95%, 98% { background: rgba(2, 6, 23, 0.4); } 96%, 99% { background: rgba(147, 51, 234, 0.15); } }
@@ -49,11 +38,14 @@
         .tab-content { display: none; padding: 0 1rem 1rem; flex: 1; overflow-y: auto; }
         .tab-content.active { display: flex; flex-direction: column; }
 
-        /* HEADER & MENU */
         .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; z-index: 100; }
         .node-menu { position: fixed; top: 75px; right: 2rem; width: 180px; background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 15px 35px rgba(0,0,0,0.15); display: none; z-index: 500; overflow: hidden; }
         .node-menu.active { display: block; }
         .menu-item { width: 100%; padding: 14px 20px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #f8fafc; color: #64748b; cursor: pointer; }
+        
+        .chat-bubble { padding: 12px 16px; border-radius: 1.25rem; max-width: 85%; font-size: 11px; line-height: 1.4; margin-bottom: 12px; }
+        .chat-admin { background: rgba(16, 185, 129, 0.15); border-left: 3px solid var(--emerald); color: white; align-self: flex-start; }
+        .chat-user { background: rgba(255, 255, 255, 0.05); color: #94a3b8; align-self: flex-end; border-right: 3px solid rgba(255,255,255,0.2); text-align: right; }
     </style>
 </head>
 <body class="max-w-md mx-auto" onclick="closeMenu()">
@@ -74,7 +66,7 @@
                 </div>
                 <div class="flex justify-between border-b border-white/5 pb-2">
                     <span class="text-slate-500">MoMo Number</span>
-                    <span id="p-phone" class="text-emerald-400 tracking-widest">---</span>
+                    <span id="p-phone" class="text-white tracking-widest">---</span>
                 </div>
                 <div class="flex justify-between border-b border-white/5 pb-2">
                     <span class="text-slate-500">Seed Amount</span>
@@ -82,17 +74,17 @@
                 </div>
                 <div class="flex justify-between border-b border-white/5 pb-2">
                     <span class="text-slate-500">Merchant</span>
-                    <span id="p-merchant" class="text-amber-400 font-bold">---</span>
+                    <span id="p-merchant" class="font-bold">---</span>
                 </div>
                 <div class="pt-2 text-center">
-                    <p class="text-[7px] text-emerald-500 mb-1 italic">Required Reference ID</p>
+                    <p class="text-[7px] text-emerald-500 mb-1 italic uppercase font-black">Required Reference ID</p>
                     <p id="p-payment-ref" class="text-2xl text-white tracking-[0.3em] font-black">----</p>
                 </div>
             </div>
         </div>
         
-        <p class="text-[9px] font-bold text-slate-500 mb-4 italic">"Givers Never Lack"</p>
-        <button onclick="restoreScroll()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg">Review Terminal</button>
+        <button onclick="confirmPaymentAction()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg mb-3">I made the payment already</button>
+        <button onclick="restoreScroll()" class="w-full py-2 text-slate-500 font-black text-[8px] uppercase tracking-widest">Review Terminal</button>
     </div>
 
     <header class="seed-header">
@@ -123,18 +115,16 @@
                 <h3 class="text-sm font-black text-white italic uppercase mb-1">Impact Hub</h3>
                 <p class="text-[9px] text-emerald-100/60 font-semibold leading-relaxed">System monitoring active.</p>
             </div>
-            <button id="restore-payment-btn" onclick="showActivationCard()" class="mt-auto mx-auto mb-4 py-3 px-8 border border-amber-500/30 bg-amber-500/5 text-amber-500 text-[9px] font-black uppercase rounded-full hidden">Show Activation Details</button>
+            <button id="restore-payment-btn" onclick="showActivationCard()" class="mt-auto mx-auto mb-4 py-3 px-8 border border-amber-500/30 bg-amber-500/5 text-amber-500 text-[9px] font-black uppercase rounded-full hidden italic">Show Activation Details</button>
         </section>
 
         <section id="t-vault" class="tab-content">
-            <div class="vault-bg">
-                <div class="relative z-30 text-center w-full">
+             <div class="bg-gradient-to-b from-emerald-950 to-emerald-900 rounded-[2rem] min-height-[340px] flex items-center justify-center p-10 relative overflow-hidden">
+                <div class="text-center w-full relative z-20">
                     <p class="text-[8px] font-black text-emerald-400 uppercase mb-2">Claim Vaulted</p>
                     <h2 id="v-balance" class="text-4xl font-black italic text-white mb-8">GH₵0.00</h2>
-                    <div class="flex flex-col gap-3 px-6">
-                        <button onclick="vaultGrace()" class="w-full py-4 bg-white text-emerald-900 rounded-2xl text-[8px] font-black uppercase tracking-widest">Claim to Vault</button>
-                        <button onclick="triggerWithdrawal()" class="w-full py-4 bg-emerald-500/20 text-white rounded-2xl text-[8px] font-black uppercase border border-emerald-500/30">Withdraw</button>
-                    </div>
+                    <button onclick="vaultGrace()" class="w-full py-4 bg-white text-emerald-900 rounded-2xl text-[8px] font-black mb-3 uppercase tracking-widest">Claim to Vault</button>
+                    <button onclick="triggerWithdrawal()" class="w-full py-4 bg-emerald-500/20 text-white rounded-2xl text-[8px] font-black uppercase border border-white/10">Withdraw</button>
                 </div>
             </div>
         </section>
@@ -152,19 +142,6 @@
         <section id="t-ledger" class="tab-content"><div id="ledger-content" class="bg-black/20 rounded-2xl divide-y divide-white/5"></div></section>
     </main>
 
-    <div id="withdrawModal" class="fixed inset-0 bg-black/95 hidden z-[1100] items-center justify-center p-6">
-        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-xs text-center">
-            <p class="text-[10px] font-black uppercase text-emerald-600 mb-1 italic">Withdrawal Terminal</p>
-            <div class="space-y-4 my-6">
-                <div class="flex justify-between text-[9px] font-black"><span class="text-slate-400 uppercase">Vault Total</span><span id="m-avail">GH₵0.00</span></div>
-                <div class="flex justify-between text-[9px] font-black border-b pb-2 text-rose-500"><span class="uppercase">Service Charge (2%)</span><span id="m-fee">-GH₵0.00</span></div>
-                <div class="flex justify-between text-base font-black italic"><span>Payout</span><span id="m-final" class="text-emerald-600">GH₵0.00</span></div>
-            </div>
-            <button onclick="processWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase">Confirm</button>
-            <button onclick="toggleModal('withdrawModal', false)" class="w-full text-[8px] font-black text-slate-400 uppercase py-2 mt-2">Cancel</button>
-        </div>
-    </div>
-
     <div id="nodeMenu" class="node-menu">
         <button onclick="logout()" class="menu-item text-red-500 font-black">Exit Terminal</button>
     </div>
@@ -176,8 +153,8 @@
         let userObj = null, globalVaulted = 0;
 
         const MERCHANT_MTN = "0535261448";
-        const MERCHANT_TEL = "020XXXXXXX"; // Placeholder as per signup source
-        const MERCHANT_AT = "026XXXXXXX";  // Placeholder as per signup source
+        const MERCHANT_TEL = "020XXXXXXX";
+        const MERCHANT_AT = "026XXXXXXX";
         
         const NET_LOGOS = {
             MTN: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png",
@@ -187,8 +164,7 @@
 
         function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
         function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
-        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
-
+        
         function restoreScroll() {
             document.getElementById('manual-pay-card').style.display = 'none';
             document.body.classList.remove('withered');
@@ -201,6 +177,25 @@
             document.getElementById('manual-pay-card').style.display = 'block';
         }
 
+        async function confirmPaymentAction() {
+            const ref = document.getElementById('p-payment-ref').innerText;
+            const amt = document.getElementById('p-seed-amt').innerText;
+            const message = `SYSTEM ALERT: User reported payment completion. [Ref: ${ref}] [Amt: ${amt}]. Awaiting verification.`;
+            
+            const { error } = await _gv.from('messages').insert([{ 
+                sender_id: userObj.id, 
+                receiver_id: '00000000-0000-0000-0000-000000000000', 
+                content: message, 
+                sender_name: 'USER_SYSTEM' 
+            }]);
+
+            if(!error) {
+                alert("Verification request sent to Admin.");
+                restoreScroll();
+                openTab('t-comm');
+            }
+        }
+
         async function sync() {
             const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
             
@@ -209,7 +204,6 @@
                 if(!document.body.classList.contains('force-scroll')) showActivationCard();
                 
                 if(profile) {
-                    // NAMING CONSISTENCY WITH BLUEPRINT
                     document.getElementById('p-full-name').innerText = profile.full_name || "---";
                     document.getElementById('p-phone').innerText = profile.phone || "---";
                     document.getElementById('p-seed-amt').innerText = `GH₵ ${(profile.current_range_max || 0).toFixed(2)}`;
@@ -218,12 +212,23 @@
                     const net = (profile.network || '').toUpperCase();
                     const logoDiv = document.getElementById('p-net-logo');
                     const merchDiv = document.getElementById('p-merchant');
+                    const phoneDiv = document.getElementById('p-phone');
 
                     if (NET_LOGOS[net]) {
                         logoDiv.style.backgroundImage = `url('${NET_LOGOS[net]}')`;
-                        if(net === 'MTN') merchDiv.innerText = MERCHANT_MTN;
-                        else if(net === 'TELECEL') merchDiv.innerText = MERCHANT_TEL;
-                        else if(net === 'AT') merchDiv.innerText = MERCHANT_AT;
+                        if(net === 'MTN') {
+                            merchDiv.innerText = MERCHANT_MTN;
+                            merchDiv.style.color = "#fbbf24";
+                            phoneDiv.style.color = "#fbbf24";
+                        } else if(net === 'TELECEL') {
+                            merchDiv.innerText = MERCHANT_TEL;
+                            merchDiv.style.color = "#ef4444";
+                            phoneDiv.style.color = "#ef4444";
+                        } else if(net === 'AT') {
+                            merchDiv.innerText = MERCHANT_AT;
+                            merchDiv.style.color = "#3b82f6";
+                            phoneDiv.style.color = "#3b82f6";
+                        }
                     }
                 }
             } else {
@@ -234,7 +239,6 @@
                 document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
             }
 
-            // Standard Sync Logic for Balance/Ledger
             const { data: ledger } = await _gv.from('ledger').select('*').eq('user_id', userObj.id).order('created_at', { ascending: false });
             let ts=0, tg=0, tv=0, tw=0;
             ledger?.forEach(l => {
@@ -259,7 +263,6 @@
             await fetchMessages();
         }
 
-        // Standard Utility Functions
         async function fetchMessages() {
             const { data: msgs } = await _gv.from('messages').select('*').or(`receiver_id.eq.${userObj.id},sender_id.eq.${userObj.id}`).order('created_at', { ascending: true });
             const scroller = document.getElementById('chat-scroller');
@@ -284,20 +287,6 @@
             if (amount <= 0) return alert("Zero Balance.");
             await _gv.from('ledger').insert([{ user_id: userObj.id, amount: amount, entry_type: 'seed', description: `Vaulted GH₵${amount.toFixed(2)}` }]);
             sync();
-        }
-
-        function triggerWithdrawal() { 
-            if(globalVaulted <= 0) return alert("Vault Empty."); 
-            const fee = globalVaulted * 0.02; 
-            document.getElementById('m-avail').innerText = `GH₵${globalVaulted.toFixed(2)}`; 
-            document.getElementById('m-fee').innerText = `-GH₵${fee.toFixed(2)}`; 
-            document.getElementById('m-final').innerText = `GH₵${(globalVaulted - fee).toFixed(2)}`; 
-            toggleModal('withdrawModal', true); 
-        }
-
-        async function processWithdrawal() { 
-            const { error } = await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -globalVaulted, entry_type: 'withdrawal', description: `Payout (2% fee applied)` }]); 
-            if(!error) { toggleModal('withdrawModal', false); sync(); alert("Logged."); }
         }
 
         function createRain() { const ov = document.getElementById('suspension-overlay'); for(let i=0; i<30; i++) { const d = document.createElement('div'); d.className = 'rain-drop'; d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() * 2 + 's'; ov.appendChild(d); } }
