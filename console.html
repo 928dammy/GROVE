@@ -167,10 +167,9 @@
 
             let sunk=0, pool=0;
             ledger?.forEach(l => {
-                // If user is Admin or entry is specifically system injection, count as Pool
-                if(l.user_id === SYSTEM_ADMIN_ID || l.entry_type === 'system_injection') pool += l.amount;
-                // If entry is a seed from a user, count as Sunk
-                else if(l.entry_type === 'seed') sunk += Math.abs(l.amount);
+                // If entry is a seed from a user, count as Sunk. Everything else is Ultimate Liquidity (Pool)
+                if(l.entry_type === 'seed') sunk += Math.abs(l.amount);
+                else pool += l.amount;
             });
 
             globalPoolBalance = pool;
@@ -205,8 +204,9 @@
                         <div><p class="text-[8px] font-black text-amber-400">₵${c.toFixed(2)}</p><p class="text-[5px] text-slate-500 uppercase font-black">Claim</p></div>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-3">
-                         <button onclick="nodeOp('${n.id}', '${n.is_verified ? 'unverify' : 'verify'}')" class="btn-action ${n.is_verified ? 'bg-white/5 text-slate-400' : 'bg-emerald-500 text-black'}">${n.is_verified ? 'Lockout' : 'Verify & Release'}</button>
+                         <button onclick="nodeOp('${n.id}', '${n.is_verified ? 'unverify' : 'verify'}')" class="btn-action ${n.is_verified ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500 text-black'}">${n.is_verified ? 'FREEZE' : 'RELEASE'}</button>
                          <button onclick="openUserChat('${n.id}')" class="btn-action bg-white/10 text-white">Chat</button>
+                         <button onclick="deleteNode('${n.id}')" class="btn-action bg-rose-500/20 text-rose-500 col-span-2 mt-1 border border-rose-500/30">TERMINATE NODE</button>
                     </div>
                 </div>`;
             }).join('');
@@ -236,6 +236,13 @@
             updateNavBadge();
         }
 
+        async function deleteNode(id) {
+            if(confirm("PERMANENTLY TERMINATE THIS NODE? Action irreversible.")) {
+                await _gv.from('profiles').delete().eq('id', id);
+                sync();
+            }
+        }
+
         async function verifyNodeManual() {
             const email = document.getElementById('targetEmail').value;
             if(!email) return alert("Enter email");
@@ -248,7 +255,14 @@
         }
 
         async function openUserChat(id) {
-            currentChatId = id; document.getElementById('inboxView').classList.add('view-hidden');
+            currentChatId = id; 
+            // Switch tab view to Messages
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('messages').classList.add('active');
+            document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+            document.querySelector('[onclick*="messages"]').classList.add('active');
+            
+            document.getElementById('inboxView').classList.add('view-hidden');
             document.getElementById('chatView').classList.remove('view-hidden');
             document.getElementById('activeChatName').innerText = allNodes.find(n => n.id === id)?.full_name || 'NODE';
             refreshChat();
