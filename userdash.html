@@ -10,11 +10,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --emerald: #10b981; --grove-deep: #061a14; --grove-leaf: #064e3b; --gold: #fbbf24; }
+        html, body { height: 100%; margin: 0; padding: 0; background: #f8fafc; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; max-width: 450px; margin: 0 auto; color: #1e293b; overflow-x: hidden; }
         
-        html, body { height: 100%; margin: 0; padding: 0; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; color: #1e293b; overflow-x: hidden; overflow-y: auto; }
-        
-        /* UNMOVABLE PAYMENT CARD - PAGE SCROLLS BEHIND */
+        /* PAYMENT CARD - FIXED OVERLAY */
         .compact-activation-card {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             z-index: 1000; width: 92%; max-width: 340px;
@@ -23,49 +22,55 @@
             box-shadow: 0 0 60px rgba(0,0,0,0.9); display: none;
         }
 
-        .terminal-parent { background: var(--grove-deep); border-radius: 2.5rem; color: #ecfdf5; min-height: 580px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; z-index: 50; display: flex; flex-direction: column; }
+        .terminal-parent { background: var(--grove-deep); border-radius: 2.5rem; color: #ecfdf5; min-height: 600px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; display: flex; flex-direction: column; margin-top: 10px; }
+        
         .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 12px 0; white-space: nowrap; }
-        @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
         .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; gap: 4px; margin: 0 1rem 1rem; }
-        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 9px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; }
+        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 9px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 12px 0; text-align: center; border-radius: 8px; position: relative; }
         .tab-trigger.active { color: #fff; background: var(--grove-leaf); }
         
+        .unread-dot { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; background: #fbbf24; border-radius: 50%; display: none; }
+
         .tab-content { display: none; padding: 0 1rem 1rem; flex: 1; overflow-y: auto; }
         .tab-content.active { display: flex; flex-direction: column; }
         
-        /* SCROLLABLE CONVERSATION VIEW */
-        #chat-scroller { height: 350px; overflow-y: auto; scroll-behavior: smooth; padding-right: 5px; }
+        #chat-scroller { height: 320px; overflow-y: auto; scroll-behavior: smooth; }
+        .seed-header { background: white; border-radius: 2rem; padding: 1.25rem; margin-top: 10px; border: 1px solid #f1f5f9; }
 
-        .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; z-index: 100; }
-        
-        .grove-modal-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.9); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
-        .grove-modal-box { background: white; width: 100%; max-width: 300px; border-radius: 2.5rem; padding: 2rem; text-align: center; }
+        /* MODAL SYSTEM */
+        .grove-modal-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.95); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1.5rem; }
+        .grove-modal-box { background: white; width: 100%; max-width: 320px; border-radius: 2.5rem; padding: 2.5rem; text-align: center; color: #020617; }
     </style>
 </head>
-<body class="max-w-md mx-auto">
+<body class="px-4">
+
+    <div id="modal-withdrawal" class="grove-modal-overlay">
+        <div class="grove-modal-box">
+            <h3 class="text-xl font-black italic mb-2">WITHDRAWAL</h3>
+            <p id="mw-details" class="text-[10px] leading-relaxed text-slate-500 uppercase font-bold mb-6"></p>
+            <button onclick="executeWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[10px] uppercase mb-3">Confirm Claim</button>
+            <button onclick="closeModal('modal-withdrawal')" class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cancel</button>
+        </div>
+    </div>
 
     <div id="manual-pay-card" class="compact-activation-card">
         <div id="p-net-logo" class="h-10 mb-3 bg-center bg-no-repeat bg-contain"></div>
-        <p id="p-net-name" class="text-[8px] font-black uppercase tracking-[0.2em] mb-4">Awaiting Sync...</p>
+        <p id="p-net-name" class="text-[8px] font-black uppercase tracking-[0.2em] mb-4">Network Node Pending</p>
         
         <div class="bg-black/40 rounded-3xl p-5 mb-5 space-y-4 text-left border border-white/5">
             <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">Recipient</span><span id="p-reg-name" class="text-[9px] text-white font-bold italic">---</span></div>
-            <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">User Phone</span><span id="p-reg-phone" class="text-[10px] font-black tracking-widest">---</span></div>
+            <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">Merchant No.</span><span id="p-merch-no" class="text-[11px] font-black tracking-widest">---</span></div>
             <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">Seed Amount</span><span id="p-gift-val" class="text-[11px] text-white font-black">₵0.00</span></div>
-            
-            <div class="border-t border-white/10 pt-4 mt-2">
-                <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">Merchant No.</span><span id="p-merch-no" class="text-[11px] font-black tracking-widest">---</span></div>
-            </div>
             
             <div class="text-center pt-3 bg-white/5 rounded-2xl py-3 mt-2">
                 <p class="text-[7px] text-emerald-500 font-black italic mb-1 uppercase tracking-widest">Reference ID</p>
                 <p id="p-unique-ref" class="text-2xl text-amber-400 tracking-[0.3em] font-black">----</p>
             </div>
         </div>
-        
         <button onclick="confirmPaymentAction()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg mb-2">I have already paid</button>
-        <button onclick="hidePaymentCard()" class="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-2">Close Terminal View</button>
+        <button onclick="hidePaymentCard()" class="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-2">Close View</button>
     </div>
 
     <header class="seed-header">
@@ -80,27 +85,30 @@
     </header>
 
     <main class="terminal-parent">
-        <div class="broadcast-ticker"><div class="ticker-move italic">GIVERS NEVER LACK • NODE OPERATIONAL • SYNC COMPLETE</div></div>
+        <div class="broadcast-ticker"><div class="ticker-move italic">GIVERS NEVER LACK • NODE OPERATIONAL • SECURE ENCRYPTION ACTIVE • 2% SERVICE FEE APPLIES TO ALL WITHDRAWALS •</div></div>
         
         <nav class="nav-pill">
             <div id="btn-orchard" class="tab-trigger active" onclick="openTab('t-orchard')">Orchard</div>
             <div id="btn-vault" class="tab-trigger" onclick="openTab('t-vault')">Vault</div>
-            <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">Messages</div>
+            <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">
+                Messages
+                <div id="unread-dot" class="unread-dot"></div>
+            </div>
         </nav>
 
         <section id="t-orchard" class="tab-content active">
-            <button id="show-pay-btn" onclick="showPaymentCard()" class="mt-4 py-3 border border-amber-500/30 bg-amber-500/5 text-amber-500 text-[9px] font-black uppercase rounded-xl italic hidden">View Activation Node</button>
+            <div class="p-6 text-center border border-white/5 bg-white/5 rounded-[2rem]">
+                <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Network Status</p>
+                <h3 id="orchard-status" class="text-xl font-black italic mt-2">ACTIVE</h3>
+            </div>
+            <button id="show-pay-btn" onclick="showPaymentCard()" class="mt-4 py-3 border border-amber-500/30 bg-amber-500/5 text-amber-500 text-[9px] font-black uppercase rounded-xl italic">View Activation Node</button>
         </section>
 
         <section id="t-comm" class="tab-content">
-            <div class="flex justify-between mb-2">
-                <button onclick="scrollChat('top')" class="text-[7px] font-black text-slate-500 uppercase">↑ Jump to Top</button>
-                <button onclick="scrollChat('bottom')" class="text-[7px] font-black text-slate-500 uppercase">↓ Jump to Bottom</button>
-            </div>
             <div id="chat-scroller" class="space-y-4 py-4 flex flex-col"></div>
             <div class="pt-4 border-t border-white/5 flex gap-2">
                 <input id="chat-input" type="text" placeholder="SECURE CHANNEL..." class="flex-1 bg-black/40 border border-white/10 rounded-xl py-4 px-5 text-[10px] text-white outline-none">
-                <button onclick="sendMsg()" class="bg-emerald-600 px-6 rounded-xl text-[9px] font-black text-white uppercase">Send</button>
+                <button id="send-msg-btn" onclick="sendMsg()" class="bg-emerald-600 px-6 rounded-xl text-[9px] font-black text-white uppercase">Send</button>
             </div>
         </section>
 
@@ -117,112 +125,163 @@
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
-        let userObj = null;
-
-        const MERCHANT_MTN = "0535261448";
-        const MERCHANT_TEL = "020XXXXXXX";
-        const MERCHANT_AT = "026XXXXXXX";
-
-        const NET_LOGOS = {
-            MTN: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png",
-            TELECEL: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Telecel_Logo.svg/1200px-Telecel_Logo.svg.png",
-            AT: "https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png"
-        };
-
-        function showPaymentCard() { document.getElementById('manual-pay-card').style.display = 'block'; }
-        function hidePaymentCard() { document.getElementById('manual-pay-card').style.display = 'none'; }
         
-        function scrollChat(pos) {
-            const scroller = document.getElementById('chat-scroller');
-            scroller.scrollTop = pos === 'bottom' ? scroller.scrollHeight : 0;
-        }
+        let userObj = null;
+        let pendingWithdrawal = 0;
+        const ADMIN_UUID = '00000000-0000-0000-0000-000000000000';
 
+        // 1. DATA SYNC
         async function sync() {
             const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
             if (!profile) return;
 
-            // Populate Payment Card with signup data
-            document.getElementById('p-reg-name').innerText = profile.full_name || "---";
-            document.getElementById('p-reg-phone').innerText = profile.phone || "---";
+            // Populate Text
+            document.getElementById('user-display').innerText = profile.full_name.toUpperCase();
+            document.getElementById('p-reg-name').innerText = profile.full_name;
             document.getElementById('p-gift-val').innerText = `GH₵ ${(profile.current_range_max || 0).toFixed(2)}`;
             document.getElementById('p-unique-ref').innerText = profile.payment_ref || "----";
             
-            const net = (profile.network || 'UNKNOWN').toUpperCase();
-            const config = {
-                MTN: { color: "#fbbf24", merch: MERCHANT_MTN },
-                TELECEL: { color: "#ef4444", merch: MERCHANT_TEL },
-                AT: { color: "#3b82f6", merch: MERCHANT_AT }
-            };
+            // Balances (Ledger Logic)
+            const { data: ledger } = await _gv.from('ledger').select('amount, entry_type').eq('user_id', userObj.id);
+            let seeds = 0; let vault = 0;
+            ledger?.forEach(l => {
+                if(l.entry_type === 'seed') seeds += l.amount;
+                if(l.entry_type === 'gift_received') vault += l.amount;
+                if(l.entry_type === 'withdrawal') vault -= l.amount;
+            });
 
-            if (config[net]) {
-                const c = config[net];
-                document.getElementById('p-net-logo').style.backgroundImage = `url('${NET_LOGOS[net]}')`;
-                document.getElementById('p-net-name').innerText = net;
-                document.getElementById('p-net-name').style.color = c.color;
-                // Color code all numbers to network color
-                document.getElementById('p-reg-phone').style.color = c.color;
-                document.getElementById('p-merch-no').innerText = c.merch;
-                document.getElementById('p-merch-no').style.color = c.color;
-            }
+            document.getElementById('s-seed').innerText = `GH₵ ${seeds.toFixed(2)}`;
+            document.getElementById('s-reclaim').innerText = `GH₵ ${vault.toFixed(2)}`;
+            document.getElementById('v-balance').innerText = `GH₵ ${vault.toFixed(2)}`;
 
+            // Network Config
+            const net = profile.network || 'MTN';
+            const merch = net === 'MTN' ? '0535261448' : (net === 'TELECEL' ? '020XXXXXXX' : '026XXXXXXX');
+            document.getElementById('p-merch-no').innerText = merch;
+            document.getElementById('p-net-name').innerText = net;
+
+            // Activation Logic
             if (profile.is_verified) {
                 hidePaymentCard();
                 document.getElementById('show-pay-btn').classList.add('hidden');
-                document.getElementById('user-display').innerText = profile.full_name.toUpperCase();
+                document.getElementById('orchard-status').innerText = "VERIFIED NODE";
+                document.getElementById('orchard-status').classList.add('text-emerald-400');
             } else {
                 showPaymentCard();
-                document.getElementById('show-pay-btn').classList.remove('hidden');
+                document.getElementById('orchard-status').innerText = "AWAITING SEED";
             }
             fetchMessages();
         }
 
+        // 2. WITHDRAWAL LOGIC (2% FEE)
+        function triggerWithdrawal() {
+            const bal = parseFloat(document.getElementById('v-balance').innerText.replace('GH₵ ', ''));
+            if(bal <= 0) return alert("Insufficient Balance.");
+            
+            const fee = bal * 0.02;
+            const net = bal - fee;
+            pendingWithdrawal = bal;
+
+            document.getElementById('mw-details').innerHTML = `
+                Available: GH₵ ${bal.toFixed(2)}<br>
+                Service Charge (2%): GH₵ ${fee.toFixed(2)}<br>
+                <span class="text-emerald-500">Claimable: GH₵ ${net.toFixed(2)}</span>
+            `;
+            openModal('modal-withdrawal');
+        }
+
+        async function executeWithdrawal() {
+            const { error } = await _gv.from('ledger').insert([{
+                user_id: userObj.id,
+                amount: pendingWithdrawal,
+                entry_type: 'withdrawal',
+                description: 'Withdrawal Claim Initiated'
+            }]);
+            
+            if(!error) {
+                alert("Withdrawal Requested. Funds will be sent to your MoMo number.");
+                closeModal('modal-withdrawal');
+                sync();
+            }
+        }
+
+        // 3. MESSAGING
         async function sendMsg() {
             const input = document.getElementById('chat-input');
             if(!input.value) return;
+            const content = input.value;
+            input.value = '';
+            
             await _gv.from('messages').insert([{ 
                 sender_id: userObj.id, 
-                receiver_id: '00000000-0000-0000-0000-000000000000', 
-                content: input.value 
+                receiver_id: ADMIN_UUID, 
+                content: content 
             }]);
-            input.value = '';
             fetchMessages();
         }
 
-        async function confirmPaymentAction() {
-            const ref = document.getElementById('p-unique-ref').innerText;
-            const amt = document.getElementById('p-gift-val').innerText;
-            await _gv.from('messages').insert([{ 
-                sender_id: userObj.id, 
-                receiver_id: '00000000-0000-0000-0000-000000000000', 
-                content: `PAYMENT_CLAIM: I have paid ${amt}. Reference ID: ${ref}` 
-            }]);
-            alert("Verification Message Sent to Admin.");
-            hidePaymentCard();
-        }
-
         async function fetchMessages() {
-            const { data: msgs } = await _gv.from('messages').select('*').or(`sender_id.eq.${userObj.id},receiver_id.eq.${userObj.id}`).order('created_at', { ascending: true });
+            const { data: msgs } = await _gv.from('messages')
+                .select('*')
+                .or(`sender_id.eq.${userObj.id},receiver_id.eq.${userObj.id}`)
+                .order('created_at', { ascending: true });
+            
             const container = document.getElementById('chat-scroller');
-            container.innerHTML = msgs.map(m => `
-                <div class="flex flex-col ${m.sender_id === userObj.id ? 'items-end' : 'items-start'}">
-                    <div class="p-3 rounded-2xl max-w-[80%] text-[10px] ${m.sender_id === userObj.id ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-white/5 border border-white/10'}">${m.content}</div>
-                </div>
-            `).join('');
-            scrollChat('bottom');
+            let hasUnread = false;
+
+            container.innerHTML = msgs.map(m => {
+                if(!m.is_read && m.sender_id === ADMIN_UUID) hasUnread = true;
+                const isMe = m.sender_id === userObj.id;
+                return `
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        <div class="p-3 rounded-2xl max-w-[85%] text-[10px] ${isMe ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-100' : 'bg-white/5 border border-white/10 text-slate-300'}">
+                            ${m.content}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('unread-dot').style.display = hasUnread ? 'block' : 'none';
+            container.scrollTop = container.scrollHeight;
         }
 
+        // 4. UTILS
         function openTab(id) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
+            if(id === 't-comm') {
+                document.getElementById('unread-dot').style.display = 'none';
+                _gv.from('messages').update({ is_read: true }).eq('receiver_id', userObj.id);
+            }
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function showPaymentCard() { document.getElementById('manual-pay-card').style.display = 'block'; }
+        function hidePaymentCard() { document.getElementById('manual-pay-card').style.display = 'none'; }
+
+        async function confirmPaymentAction() {
+            const ref = document.getElementById('p-unique-ref').innerText;
+            await _gv.from('messages').insert([{ 
+                sender_id: userObj.id, 
+                receiver_id: ADMIN_UUID, 
+                content: `SYSTEM_PAY_CLAIM: Reference ${ref} has been paid.` 
+            }]);
+            alert("Admin notified. Node will activate shortly.");
+            hidePaymentCard();
         }
 
         async function init() { 
             const { data: { user } } = await _gv.auth.getUser(); 
             if(!user) return window.location.href = "index.html"; 
-            userObj = user; sync(); 
+            userObj = user; 
+            sync(); 
+            // Realtime
+            _gv.channel('any').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
         }
+        
         init();
         async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
     </script>
