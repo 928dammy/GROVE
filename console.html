@@ -27,8 +27,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .slogan-badge { font-size: 8px; font-weight: 900; color: #fbbf24; letter-spacing: 2px; }
         .status-pill { font-size: 7px; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
-        
-        /* Chat UI */
         .bubble-wrapper { display: flex; flex-direction: column; width: 100%; margin-bottom: 8px; }
         .chat-bubble { padding: 12px 16px; border-radius: 1.2rem; font-size: 11px; max-width: 85%; position: relative; line-height: 1.4; }
         .bubble-in { background: rgba(255,255,255,0.08); color: #f1f5f9; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid rgba(255,255,255,0.05); }
@@ -37,7 +35,6 @@
         .view-hidden { display: none !important; }
         .filter-btn { font-size: 7px; font-weight: 900; padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); cursor: pointer; text-transform: uppercase; }
         .filter-btn.active { background: #10b981; color: black; border-color: #10b981; }
-
         #adminChatBox::-webkit-scrollbar { width: 3px; }
         #adminChatBox::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 10px; }
     </style>
@@ -88,7 +85,6 @@
     </header>
 
     <main class="p-4 max-w-4xl mx-auto">
-        
         <section id="nodes" class="tab-content active">
             <div class="mb-6 auth-card p-6">
                 <h3 class="text-xs font-black uppercase text-blue-400 mb-4 italic">Node Verification (Unlock Dash)</h3>
@@ -137,13 +133,12 @@
             <div class="auth-card p-6 mb-4">
                 <h3 class="text-sm font-black uppercase text-amber-500 mb-4 italic">Broadcast New Mission</h3>
                 <div class="space-y-3">
-                    <input type="text" id="missionTitle" placeholder="Mission Name (e.g. Barbershop Revamp)" class="input-box">
-                    <textarea id="missionDesc" placeholder="Describe the mission details, recycling bin locations, or plastic waste trading terms..." class="input-box h-32"></textarea>
+                    <input type="text" id="missionTitle" placeholder="Mission Name" class="input-box">
+                    <textarea id="missionDesc" placeholder="Mission details..." class="input-box h-32"></textarea>
                     <input type="number" id="missionGoal" placeholder="Seeding Goal ₵" class="input-box">
                     <button onclick="publishMission()" class="w-full py-4 bg-amber-600 text-white font-black rounded-2xl text-xs uppercase">Deploy Mission</button>
                 </div>
             </div>
-            <h3 class="text-[10px] font-black text-slate-500 uppercase mb-3 px-2 italic">Active Missions</h3>
             <div id="missionList" class="space-y-3"></div>
         </section>
 
@@ -164,29 +159,14 @@
         </section>
 
         <section id="payouts" class="tab-content">
-            <h3 class="text-[10px] font-black text-slate-500 uppercase mb-3 px-2 italic">Withdrawal Queue (2% Deductible Applied)</h3>
             <div id="payoutList" class="space-y-2"></div>
         </section>
 
         <section id="ledger" class="tab-content">
             <div class="auth-card p-4 mb-4">
-                 <h3 class="text-[9px] font-black text-emerald-500 uppercase mb-4 italic">Live Flow Analytics (Bar & Trend)</h3>
                  <canvas id="ledgerChart" height="150"></canvas>
             </div>
-
-            <div class="flex gap-2 mb-3">
-                <button onclick="setLedgerFilter('all')" id="btnFilterAll" class="filter-btn active">Live Feed 📡</button>
-                <button onclick="setLedgerFilter('seed')" id="btnFilterSeed" class="filter-btn">Seeds 🌱</button>
-                <button onclick="setLedgerFilter('withdrawal')" id="btnFilterWithdraw" class="filter-btn">Withdrawals 💰</button>
-            </div>
-            <div class="auth-card overflow-hidden">
-                <div class="grid grid-cols-4 p-4 border-b border-white/5 text-[7px] font-black uppercase text-slate-500">
-                    <div class="col-span-1">Node</div>
-                    <div class="col-span-2 text-center">Protocol</div>
-                    <div class="col-span-1 text-right">Value</div>
-                </div>
-                <div id="ledgerTable" class="divide-y divide-white/5 max-h-[60vh] overflow-y-auto no-scrollbar"></div>
-            </div>
+            <div id="ledgerTable" class="divide-y divide-white/5"></div>
         </section>
     </main>
 
@@ -203,6 +183,8 @@
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
+        const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000"; // Fixed to match User Dash
+        
         let adminUser = null, allNodes = [], currentChatId = null, allMsgs = [], msgFilter = 'all', ledgerFilter = 'all', myChart = null;
 
         async function checkAdmin() {
@@ -214,232 +196,83 @@
         }
 
         async function sync() {
-            if(!adminUser) return;
             const { data: nodes } = await _gv.from('profiles').select('*');
             const { data: ledger } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
             const { data: msgs } = await _gv.from('messages').select('*').order('created_at', { ascending: false });
-            const { data: missions } = await _gv.from('system_events').select('*').eq('type', 'mission').order('created_at', { ascending: false });
             
             allNodes = nodes || [];
             allMsgs = msgs || [];
 
-            let globalSeeded = 0, globalWithdrawn = 0, totalVaulted = 0;
-            const nodeDetails = {};
-            const userMap = {};
-            nodes?.forEach(n => { 
-                nodeDetails[n.id] = { seeded: 0, vaulted: 0, withdrawn: 0 };
-                userMap[n.id] = n.full_name || n.email.split('@')[0];
-            });
-
+            // Stats
+            let pool = 0, vaulted = 0, seeded = 0, claimed = 0;
             ledger?.forEach(l => {
-                const val = parseFloat(l.amount) || 0;
-                const type = (l.entry_type || "").toLowerCase();
-                const desc = (l.description || "").toLowerCase();
-                if(type === 'seed' && !desc.includes('vault transfer')) globalSeeded += val;
-                if(type === 'withdrawal') globalWithdrawn += Math.abs(val);
-                if (l.user_id && nodeDetails[l.user_id]) {
-                    if (type === 'seed' && !desc.includes('vault transfer')) nodeDetails[l.user_id].seeded += val;
-                    if (desc.includes('vault transfer')) nodeDetails[l.user_id].vaulted += val;
-                    if (type === 'withdrawal') nodeDetails[l.user_id].withdrawn += Math.abs(val);
-                }
+                const amt = parseFloat(l.amount) || 0;
+                if(l.entry_type === 'seed' && !l.description.includes('Vaulted')) seeded += amt;
+                if(l.entry_type === 'withdrawal') claimed += Math.abs(amt);
             });
-
-            Object.values(nodeDetails).forEach(u => { totalVaulted += Math.max(0, u.vaulted - u.withdrawn); });
-
-            document.getElementById('stat-pool').innerText = `GH₵${(globalSeeded - globalWithdrawn).toFixed(2)}`;
-            document.getElementById('stat-vaulted').innerText = `₵${totalVaulted.toFixed(2)}`;
-            document.getElementById('stat-seeded').innerText = `₵${globalSeeded.toFixed(0)}`;
+            
+            document.getElementById('stat-pool').innerText = `GH₵${(seeded - claimed).toFixed(2)}`;
             document.getElementById('stat-nodes').innerText = nodes?.length || 0;
-            document.getElementById('stat-claimed').innerText = `₵${globalWithdrawn.toFixed(0)}`;
 
+            // Render Nodes (Mapped to is_verified for Lockout)
             const term = document.getElementById('nodeSearch').value.toLowerCase();
-            document.getElementById('nodeList').innerHTML = nodes?.filter(n => n.email.toLowerCase().includes(term)).map(n => {
-                const stats = nodeDetails[n.id] || {seeded:0, vaulted:0, withdrawn:0};
-                const statusColor = n.is_gifter ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500';
-                return `<div class="auth-card p-4"><div class="flex justify-between items-start mb-2"><div><p class="text-[10px] font-black uppercase text-white">${n.full_name || 'ANON'}</p><p class="text-[7px] text-slate-500">${n.email}</p></div><span class="status-pill ${statusColor}">${n.is_gifter ? 'Verified' : 'Locked Out'}</span></div><div class="grid grid-cols-3 gap-2 mb-4 bg-black/20 p-2 rounded-xl text-center"><div><p class="text-[6px] uppercase">Vault</p><p class="text-[9px] font-black text-emerald-400">₵${Math.max(0, stats.vaulted-stats.withdrawn).toFixed(2)}</p></div><div><p class="text-[6px] uppercase">Seed</p><p class="text-[9px] font-black">₵${stats.seeded.toFixed(0)}</p></div><div><p class="text-[6px] uppercase">Taken</p><p class="text-[9px] font-black text-rose-400">₵${stats.withdrawn.toFixed(0)}</p></div></div><div class="grid grid-cols-2 gap-2"><button onclick="quickUpdate('${n.email}', 'verify')" class="btn-action btn-verify">Verify</button><button onclick="quickUpdate('${n.email}', 'suspend')" class="btn-action btn-suspend">Suspend</button><button onclick="quickUpdate('${n.email}', 'expel')" class="btn-action btn-expel">Expel</button><button onclick="openUserChat('${n.id}')" class="btn-action btn-msg">Message</button></div></div>`;
-            }).join('');
+            document.getElementById('nodeList').innerHTML = allNodes.filter(n => n.email.toLowerCase().includes(term)).map(n => `
+                <div class="auth-card p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div><p class="text-[10px] font-black uppercase text-white">${n.full_name || 'ANON'}</p><p class="text-[7px] text-slate-500">${n.email}</p></div>
+                        <span class="status-pill ${n.is_verified ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}">
+                            ${n.is_verified ? 'Verified' : 'Locked Out'}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button onclick="quickUpdate('${n.id}', 'verify')" class="btn-action btn-verify">Verify</button>
+                        <button onclick="openUserChat('${n.id}')" class="btn-action btn-msg">Message</button>
+                    </div>
+                </div>
+            `).join('');
 
             renderInbox();
             updateNavBadge();
-
-            const withdrawals = ledger?.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID'));
-            document.getElementById('payoutList').innerHTML = withdrawals?.length ? withdrawals.map(w => {
-                const raw = Math.abs(w.amount), fee = raw * 0.02, net = raw - fee;
-                return `<div class="auth-card p-4 flex justify-between items-center mb-2"><div><p class="text-[10px] font-black text-emerald-400">DISPATCH: GH₵${net.toFixed(2)}</p><p class="text-[7px] text-slate-500 uppercase">Vault: ₵${raw} | 2% Fee: ₵${fee.toFixed(2)}</p></div><button onclick="approvePayout('${w.id}', ${raw}, '${w.user_id}')" class="px-4 py-2 bg-emerald-600 text-white text-[8px] font-black uppercase rounded-lg">Confirm</button></div>`}).join('') : `<p class="text-center py-8 opacity-20 uppercase font-black text-[7px]">Queue Empty</p>`;
-
-            // LEDGER RENDERER
-            let dL = ledger || [];
-            if(ledgerFilter !== 'all') dL = dL.filter(l => l.entry_type === ledgerFilter);
-            document.getElementById('ledgerTable').innerHTML = dL.map(l => {
-                const isWithdrawal = l.entry_type === 'withdrawal';
-                const isVault = l.description.includes('Vault');
-                const time = new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const userName = userMap[l.user_id] || 'SYS';
-                const color = isWithdrawal ? 'text-rose-400' : (isVault ? 'text-emerald-400' : 'text-blue-400');
-                const symbol = isWithdrawal ? '↓' : '↑';
-                return `<div class="p-4 grid grid-cols-4 items-center hover:bg-white/[0.02] transition-colors"><div class="col-span-1"><p class="text-[9px] font-black uppercase text-white truncate">${userName}</p><p class="text-[6px] text-slate-500 uppercase">${time}</p></div><div class="col-span-2 text-center px-2"><p class="text-[7px] text-slate-400 uppercase font-bold tracking-tight leading-tight">${l.description}</p></div><div class="col-span-1 text-right"><p class="text-[10px] font-black ${color}">${symbol} ₵${Math.abs(l.amount).toFixed(0)}</p></div></div>`;
-            }).join('');
-
-            // MISSION RENDERER
-            document.getElementById('missionList').innerHTML = missions?.length ? missions.map(m => `
-                <div class="auth-card p-4 border border-amber-500/10">
-                    <div class="flex justify-between items-center mb-2">
-                        <p class="text-[10px] font-black text-amber-500 uppercase italic">${m.title || 'GROVE MISSION'}</p>
-                        <span class="text-[8px] font-black bg-amber-500/10 text-amber-500 px-2 py-1 rounded-md tracking-widest uppercase">ACTIVE</span>
-                    </div>
-                    <p class="text-[9px] text-slate-300 leading-relaxed mb-4">${m.description || 'No details provided.'}</p>
-                    <div class="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5">
-                        <div>
-                            <p class="text-[6px] text-slate-500 uppercase">Target Goal</p>
-                            <p class="text-[10px] font-black text-white italic">₵${m.value || 0}</p>
-                        </div>
-                        <button onclick="deleteMission('${m.id}')" class="text-rose-500 text-[8px] font-black uppercase">End Mission</button>
-                    </div>
-                </div>
-            `).join('') : `<p class="text-center py-8 opacity-20 uppercase font-black text-[7px]">No Missions Deployed</p>`;
             
-            updateChart(ledger);
+            // Payouts
+            const withdrawals = ledger?.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID'));
+            document.getElementById('payoutList').innerHTML = withdrawals?.map(w => `
+                <div class="auth-card p-4 flex justify-between items-center">
+                    <p class="text-[9px] font-black uppercase text-emerald-400">₵${Math.abs(w.amount).toFixed(2)} REQUEST</p>
+                    <button onclick="approvePayout('${w.id}', '${w.user_id}', ${Math.abs(w.amount)})" class="btn-action btn-verify px-4">Pay</button>
+                </div>
+            `).join('') || '<p class="text-center text-[7px] opacity-20 py-10">QUEUE EMPTY</p>';
         }
 
-        function updateChart(data) {
-            const ctx = document.getElementById('ledgerChart').getContext('2d');
-            const recent = data.slice(0, 10).reverse();
-            const labels = recent.map(l => new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-            const values = recent.map(l => l.entry_type === 'seed' ? Math.abs(l.amount) : -Math.abs(l.amount));
-
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            type: 'line',
-                            label: 'Trend',
-                            data: values,
-                            borderColor: '#fbbf24',
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            fill: false,
-                            tension: 0.3
-                        },
-                        {
-                            label: 'Volume',
-                            data: values,
-                            backgroundColor: values.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.4)'),
-                            borderRadius: 5
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false },
-                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 8 } } }
-                    }
-                }
-            });
-        }
-
-        async function publishMission() {
-            const title = document.getElementById('missionTitle').value;
-            const desc = document.getElementById('missionDesc').value;
-            const goal = document.getElementById('missionGoal').value;
-            if(!title || !desc || !goal) return alert("Fill all mission parameters.");
-            await _gv.from('system_events').insert([{ 
-                type: 'mission', 
-                title: title.toUpperCase(), 
-                description: desc, 
-                value: parseFloat(goal) 
-            }]);
-            document.getElementById('missionTitle').value = '';
-            document.getElementById('missionDesc').value = '';
-            document.getElementById('missionGoal').value = '';
-            alert("Mission Broadcasted to all Nodes.");
+        async function quickUpdate(id, action) {
+            const updates = action === 'verify' ? { is_verified: true, is_suspended: false } : { is_verified: false };
+            await _gv.from('profiles').update(updates).eq('id', id);
             sync();
-        }
-
-        async function deleteMission(id) {
-            if(!confirm("End this mission?")) return;
-            await _gv.from('system_events').delete().eq('id', id);
-            sync();
-        }
-
-        async function quickUpdate(email, action) {
-            let updates = {};
-            if(action === 'verify') updates = { is_gifter: true };
-            if(action === 'suspend') updates = { is_gifter: false };
-            if(action === 'expel') {
-                if(!confirm("Expel node? This will block their dashboard access.")) return;
-                updates = { is_gifter: false, current_range_max: 0 };
-            }
-            await _gv.from('profiles').update(updates).eq('email', email);
-            alert(`Node ${action}ed.`); sync();
         }
 
         async function updateNodeStatus() {
-            const e = document.getElementById('targetEmail').value;
-            const min = document.getElementById('minRange').value;
+            const email = document.getElementById('targetEmail').value;
             const max = document.getElementById('maxRange').value;
-            if(!e) return;
-            await _gv.from('profiles').update({ 
-                is_gifter: true, 
-                current_range_min: parseFloat(min || 0), 
-                current_range_max: parseFloat(max || 0) 
-            }).eq('email', e);
-            alert("Node Verified & Unlocked."); sync();
+            if(!email) return;
+            await _gv.from('profiles').update({ is_verified: true, current_range_max: parseFloat(max || 0) }).eq('email', email);
+            sync(); alert("Node Released.");
         }
 
-        async function markAsRead(nodeId) {
-            await _gv.from('messages').update({ is_read: true }).match({ sender_id: nodeId, receiver_id: adminUser.id, is_read: false });
-        }
-
-        async function refreshChat() {
-            if(!currentChatId) return;
-            const { data, error } = await _gv.from('messages').select('*').or(`and(sender_id.eq.${currentChatId},receiver_id.eq.${adminUser.id}),and(sender_id.eq.${adminUser.id},receiver_id.eq.${currentChatId})`).order('created_at', { ascending: true });
-            
-            const box = document.getElementById('adminChatBox');
-            box.innerHTML = data?.map(m => {
-                const isAdmin = m.sender_id === adminUser.id || m.sender_name === 'ADMIN';
-                return `<div class="bubble-wrapper"><div class="chat-bubble ${isAdmin ? 'bubble-out' : 'bubble-in'}">${m.content}<span class="msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div></div>`;
-            }).join('') || '';
-            
-            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
-            markAsRead(currentChatId);
-        }
-
-        async function sendAdminReply() {
-            const i = document.getElementById('adminReplyInput'); 
-            const msg = i.value.trim();
-            if(!msg || !currentChatId || !adminUser) return;
-            
-            const { error } = await _gv.from('messages').insert([{ 
-                sender_id: adminUser.id, 
-                receiver_id: currentChatId, 
-                content: msg.toUpperCase(), 
-                sender_name: 'ADMIN', 
-                is_read: true 
-            }]);
-
-            if(!error) {
-                i.value = ''; 
-                await refreshChat();
-            } else {
-                console.error("Msg Error:", error);
-            }
-        }
-
+        // MESSAGING ENGINE
         function renderInbox() {
             document.getElementById('contactList').innerHTML = allNodes.map(n => {
-                const unreads = allMsgs.filter(m => m.sender_id === n.id && m.receiver_id === adminUser.id && !m.is_read);
+                const unreads = allMsgs.filter(m => m.sender_id === n.id && m.receiver_id === SYSTEM_ADMIN_ID && !m.is_read);
                 if(msgFilter === 'unread' && unreads.length === 0) return '';
-                return `<div onclick="openUserChat('${n.id}')" class="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between cursor-pointer"><div><p class="text-[10px] font-black uppercase">${n.full_name || 'NODE'}</p><p class="text-[7px] text-slate-500">${n.email}</p></div>${unreads.length ? `<div class="bg-rose-500 text-[7px] font-black px-2 py-1 rounded-full">${unreads.length}</div>` : ''}</div>`;
+                return `<div onclick="openUserChat('${n.id}')" class="p-4 auth-card flex justify-between cursor-pointer">
+                    <p class="text-[9px] font-bold uppercase">${n.full_name || n.email}</p>
+                    ${unreads.length ? `<span class="bg-rose-500 text-[7px] px-2 rounded-full">${unreads.length}</span>` : ''}
+                </div>`;
             }).join('');
         }
 
         async function openUserChat(id) {
-            currentChatId = id; const n = allNodes.find(x => x.id === id);
+            currentChatId = id;
+            const n = allNodes.find(x => x.id === id);
             openTab(null, 'messages');
             document.getElementById('inboxView').classList.add('view-hidden');
             document.getElementById('chatView').classList.remove('view-hidden');
@@ -447,64 +280,68 @@
             refreshChat();
         }
 
+        async function refreshChat() {
+            if(!currentChatId) return;
+            const { data } = await _gv.from('messages').select('*')
+                .or(`and(sender_id.eq.${currentChatId},receiver_id.eq.${SYSTEM_ADMIN_ID}),and(sender_id.eq.${SYSTEM_ADMIN_ID},receiver_id.eq.${currentChatId})`)
+                .order('created_at', { ascending: true });
+            
+            const box = document.getElementById('adminChatBox');
+            box.innerHTML = data?.map(m => `
+                <div class="bubble-wrapper">
+                    <div class="chat-bubble ${m.sender_id === SYSTEM_ADMIN_ID ? 'bubble-out' : 'bubble-in'}">
+                        ${m.content}<span class="msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
+                </div>
+            `).join('');
+            box.scrollTop = box.scrollHeight;
+            await _gv.from('messages').update({ is_read: true }).match({ sender_id: currentChatId, receiver_id: SYSTEM_ADMIN_ID });
+        }
+
+        async function sendAdminReply() {
+            const input = document.getElementById('adminReplyInput');
+            const val = input.value.trim();
+            if(!val || !currentChatId) return;
+            await _gv.from('messages').insert([{
+                sender_id: SYSTEM_ADMIN_ID,
+                receiver_id: currentChatId,
+                content: val.toUpperCase(),
+                sender_name: 'ADMIN',
+                is_read: true
+            }]);
+            input.value = ''; refreshChat();
+        }
+
+        async function approvePayout(ledgerId, userId, amount) {
+            await _gv.from('ledger').update({ description: 'PAID - TRANSACTION COMPLETED' }).eq('id', ledgerId);
+            await _gv.from('messages').insert([{
+                sender_id: SYSTEM_ADMIN_ID,
+                receiver_id: userId,
+                sender_name: "SYSTEM",
+                content: `✅ WITHDRAWAL SUCCESS: GH₵${(amount * 0.98).toFixed(2)} SENT. GIVERS NEVER LACK.`
+            }]);
+            sync();
+        }
+
         function closeChat() { currentChatId = null; document.getElementById('chatView').classList.add('view-hidden'); document.getElementById('inboxView').classList.remove('view-hidden'); }
-
-        async function broadcastGrace() {
-            const amt = document.getElementById('distAmount').value;
-            if(amt) { await _gv.from('system_events').insert([{ type: 'grace', value: parseFloat(amt) }]); alert("Grace Released."); sync(); }
-        }
-
-        async function broadcastWither() {
-            const amt = document.getElementById('wAmount').value, mins = document.getElementById('wMins').value;
-            if(amt && mins) { await _gv.from('system_events').insert([{ type: 'wither', value: parseFloat(amt), duration: parseInt(mins) }]); alert("Wither Unleashed."); sync(); }
-        }
-
-        async function approvePayout(id, raw, userId) {
-            const net = raw * 0.98;
-            if(!confirm(`Confirm payout of GH₵${net.toFixed(2)}?`)) return;
-            await _gv.from('ledger').update({ description: `PAID GH₵${net.toFixed(2)}` }).eq('id', id);
-            await _gv.from('messages').insert([{ sender_id: adminUser.id, receiver_id: userId, sender_name: "SYSTEM", content: `✅ PAYOUT SUCCESS: GH₵${net.toFixed(2)} SENT. GIVERS NEVER LACK.` }]);
-            sync();
-        }
-
-        function setMsgFilter(t) { msgFilter = t; renderInbox(); }
-        
-        function setLedgerFilter(f) {
-            ledgerFilter = f;
-            document.querySelectorAll('#ledger .filter-btn').forEach(btn => btn.classList.remove('active'));
-            if(f === 'all') document.getElementById('btnFilterAll').classList.add('active');
-            if(f === 'seed') document.getElementById('btnFilterSeed').classList.add('active');
-            if(f === 'withdrawal') document.getElementById('btnFilterWithdraw').classList.add('active');
-            sync();
-        }
-
-        function updateNavBadge() {
-            const unreadCount = allMsgs.filter(m => m.receiver_id === adminUser.id && !m.is_read).length;
-            const b = document.getElementById('navMsgBadge');
-            if(unreadCount > 0) { b.innerText = unreadCount; b.classList.remove('view-hidden'); } else b.classList.add('view-hidden');
-        }
-
         function openTab(e, n) { 
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); 
             document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active')); 
             document.getElementById(n).classList.add('active'); 
             if(e) e.currentTarget.classList.add('active');
-            if(n === 'messages') closeChat();
-            if(n === 'ledger' || n === 'missions') sync();
         }
-        
-        function payoutTabClick(e) { openTab(e, 'payouts'); sync(); }
+        function updateNavBadge() {
+            const unreadCount = allMsgs.filter(m => m.receiver_id === SYSTEM_ADMIN_ID && !m.is_read).length;
+            const b = document.getElementById('navMsgBadge');
+            if(unreadCount > 0) { b.innerText = unreadCount; b.classList.remove('view-hidden'); } else b.classList.add('view-hidden');
+        }
 
-        async function init() { 
-            sync(); 
-            _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-                if(currentChatId) refreshChat(); else sync();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger' }, () => sync())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'system_events' }, () => sync())
-            .subscribe();
+        async function init() {
+            sync();
+            _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => {
+                sync(); if(currentChatId) refreshChat();
+            }).subscribe();
         }
-        
         checkAdmin();
     </script>
 </body>
