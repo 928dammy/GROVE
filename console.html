@@ -13,10 +13,15 @@
         .auth-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1.5rem; }
         .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.4; transition: 0.3s; cursor: pointer; position: relative; }
         .nav-link.active { opacity: 1; color: #10b981; }
-        .nav-badge { position: absolute; top: 10px; right: 20%; background: #f43f5e; color: white; font-size: 7px; font-weight: 900; padding: 1px 4px; border-radius: 4px; border: 1px solid #020617; min-width: 12px; text-align: center; }
+        
+        /* ANIMATION: NOTIFICATION PULSE */
+        @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); } 70% { transform: scale(1.2); box-shadow: 0 0 0 6px rgba(244, 63, 94, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+        .nav-badge { position: absolute; top: 0px; right: 20%; background: #f43f5e; color: white; font-size: 7px; font-weight: 900; min-width: 14px; height: 14px; border-radius: 6px; border: 2px solid #020617; display: flex; align-items: center; justify-content: center; animation: pulse-red 1.5s infinite; }
+        
         .tab-content { display: none; padding-bottom: 120px; }
         .tab-content.active { display: block; animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .input-box { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); color: white; border-radius: 1rem; padding: 1rem; width: 100%; outline: none; font-size: 16px; }
         .btn-action { padding: 8px; border-radius: 10px; font-size: 9px; font-weight: 900; text-transform: uppercase; transition: 0.2s; text-align: center; border: none; cursor: pointer; }
         .btn-verify { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981; }
@@ -165,7 +170,10 @@
 
     <nav class="fixed bottom-0 left-0 right-0 h-20 bg-slate-950/90 border-t border-white/10 backdrop-blur-lg flex justify-around items-center z-50">
         <div class="nav-link active" onclick="openTab(event, 'nodes')"><span>👥</span><span class="text-[7px] font-black uppercase mt-1">Nodes</span></div>
-        <div class="nav-link" onclick="openTab(event, 'messages')"><div id="navMsgBadge" class="nav-badge view-hidden">0</div><span>💬</span><span class="text-[7px] font-black uppercase mt-1">Chat</span></div>
+        <div class="nav-link" onclick="openTab(event, 'messages')">
+            <div id="navMsgBadge" class="nav-badge" style="display:none">0</div>
+            <span>💬</span><span class="text-[7px] font-black uppercase mt-1">Chat</span>
+        </div>
         <div class="nav-link" onclick="openTab(event, 'missions')"><span>🎯</span><span class="text-[7px] font-black uppercase mt-1">Missions</span></div>
         <div class="nav-link" onclick="openTab(event, 'harvest')"><span>🌿</span><span class="text-[7px] font-black uppercase mt-1">Harvest</span></div>
         <div class="nav-link" onclick="payoutTabClick(event)"><span>💰</span><span class="text-[7px] font-black uppercase mt-1">Payouts</span></div>
@@ -194,7 +202,6 @@
             allNodes = nodes || [];
             allMsgs = msgs || [];
 
-            // Node List Rendering (Logic Fix: is_verified)
             const term = document.getElementById('nodeSearch').value.toLowerCase();
             document.getElementById('nodeList').innerHTML = nodes?.filter(n => n.email.toLowerCase().includes(term)).map(n => {
                 const statusColor = n.is_verified ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500';
@@ -205,6 +212,66 @@
             updateNavBadge();
             updateStats(nodes, ledger);
             renderPayouts(ledger);
+        }
+
+        function setMsgFilter(f) {
+            msgFilter = f;
+            document.getElementById('msgFilterAll').classList.toggle('active', f === 'all');
+            document.getElementById('msgFilterUnread').classList.toggle('active', f === 'unread');
+            renderInbox();
+        }
+
+        async function openUserChat(id) {
+            currentChatId = id; const n = allNodes.find(x => x.id === id);
+            openTab(null, 'messages');
+            document.getElementById('inboxView').classList.add('view-hidden');
+            document.getElementById('chatView').classList.remove('view-hidden');
+            document.getElementById('activeChatName').innerText = n.full_name || n.email;
+            
+            const statusEl = document.getElementById('chatNodeStatus');
+            statusEl.innerText = n.is_verified ? 'Verified' : 'Locked Out';
+            statusEl.className = `text-[7px] font-black uppercase ${n.is_verified ? 'text-emerald-500' : 'text-rose-500'}`;
+            document.getElementById('quickVerifyBtn').style.display = n.is_verified ? 'none' : 'block';
+
+            await _gv.from('messages').update({ is_read: true }).match({ sender_id: id, receiver_id: adminUser.id });
+            refreshChat();
+            updateNavBadge();
+        }
+
+        async function refreshChat() {
+            if(!currentChatId) return;
+            const { data } = await _gv.from('messages').select('*').or(`sender_id.eq.${currentChatId},receiver_id.eq.${currentChatId}`).order('created_at', { ascending: true });
+            const box = document.getElementById('adminChatBox');
+            box.innerHTML = data?.map(m => {
+                const isAdmin = m.sender_id === adminUser.id || m.sender_name === 'ADMIN' || m.sender_name === 'SYSTEM';
+                return `<div class="bubble-wrapper"><div class="chat-bubble ${isAdmin ? 'bubble-out' : 'bubble-in'}">${m.content}<span class="msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div></div>`;
+            }).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function renderInbox() {
+            document.getElementById('contactList').innerHTML = allNodes.map(n => {
+                const unreads = allMsgs.filter(m => m.sender_id === n.id && m.receiver_id === adminUser.id && !m.is_read);
+                if(msgFilter === 'unread' && unreads.length === 0) return '';
+                return `<div onclick="openUserChat('${n.id}')" class="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between cursor-pointer"><div><p class="text-[10px] font-black uppercase">${n.full_name || 'NODE'}</p><p class="text-[7px] text-slate-500">${n.email}</p></div>${unreads.length ? `<div class="bg-rose-500 text-[7px] font-black px-2 py-1 rounded-full animate-pulse">${unreads.length}</div>` : ''}</div>`;
+            }).join('');
+        }
+
+        function updateNavBadge() {
+            const count = allMsgs.filter(m => m.receiver_id === adminUser.id && !m.is_read).length;
+            const b = document.getElementById('navMsgBadge');
+            if(count > 0) {
+                b.innerText = count;
+                b.style.display = 'flex';
+            } else {
+                b.style.display = 'none';
+            }
+        }
+
+        async function sendAdminReply() {
+            const i = document.getElementById('adminReplyInput'); if(!i.value.trim() || !currentChatId) return;
+            await _gv.from('messages').insert([{ sender_id: adminUser.id, receiver_id: currentChatId, content: i.value.toUpperCase(), sender_name: 'ADMIN' }]);
+            i.value = ''; refreshChat();
         }
 
         async function quickUpdate(email, action) {
@@ -220,54 +287,12 @@
             alert("Unlocked."); sync();
         }
 
-        async function openUserChat(id) {
-            currentChatId = id; const n = allNodes.find(x => x.id === id);
-            openTab(null, 'messages');
-            document.getElementById('inboxView').classList.add('view-hidden');
-            document.getElementById('chatView').classList.remove('view-hidden');
-            document.getElementById('activeChatName').innerText = n.full_name || n.email;
-            
-            const statusEl = document.getElementById('chatNodeStatus');
-            statusEl.innerText = n.is_verified ? 'Verified' : 'Locked Out';
-            statusEl.className = `text-[7px] font-black uppercase ${n.is_verified ? 'text-emerald-500' : 'text-rose-500'}`;
-            document.getElementById('quickVerifyBtn').style.display = n.is_verified ? 'none' : 'block';
-
-            refreshChat();
-        }
-
         async function quickVerifyChat() {
             if(!currentChatId) return;
-            const n = allNodes.find(x => x.id === currentChatId);
             await _gv.from('profiles').update({ is_verified: true, is_gifter: true }).eq('id', currentChatId);
             await _gv.from('messages').insert([{ sender_id: adminUser.id, receiver_id: currentChatId, content: "✅ YOUR TERMINAL HAS BEEN VERIFIED. ACCESS GRANTED.", sender_name: 'SYSTEM' }]);
             openUserChat(currentChatId);
             sync();
-        }
-
-        async function sendAdminReply() {
-            const i = document.getElementById('adminReplyInput'); if(!i.value.trim() || !currentChatId) return;
-            await _gv.from('messages').insert([{ sender_id: adminUser.id, receiver_id: currentChatId, content: i.value.toUpperCase(), sender_name: 'ADMIN' }]);
-            i.value = ''; refreshChat();
-        }
-
-        async function refreshChat() {
-            if(!currentChatId) return;
-            const { data } = await _gv.from('messages').select('*').or(`sender_id.eq.${currentChatId},receiver_id.eq.${currentChatId}`).order('created_at', { ascending: true });
-            const box = document.getElementById('adminChatBox');
-            box.innerHTML = data?.map(m => {
-                const isAdmin = m.sender_id === adminUser.id || m.sender_name === 'ADMIN' || m.sender_name === 'SYSTEM';
-                return `<div class="bubble-wrapper"><div class="chat-bubble ${isAdmin ? 'bubble-out' : 'bubble-in'}">${m.content}<span class="msg-time">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div></div>`;
-            }).join('');
-            box.scrollTop = box.scrollHeight;
-            await _gv.from('messages').update({ is_read: true }).match({ sender_id: currentChatId, receiver_id: adminUser.id });
-        }
-
-        function renderInbox() {
-            document.getElementById('contactList').innerHTML = allNodes.map(n => {
-                const unreads = allMsgs.filter(m => m.sender_id === n.id && m.receiver_id === adminUser.id && !m.is_read);
-                if(msgFilter === 'unread' && unreads.length === 0) return '';
-                return `<div onclick="openUserChat('${n.id}')" class="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between cursor-pointer"><div><p class="text-[10px] font-black uppercase">${n.full_name || 'NODE'}</p><p class="text-[7px] text-slate-500">${n.email}</p></div>${unreads.length ? `<div class="bg-rose-500 text-[7px] font-black px-2 py-1 rounded-full">${unreads.length}</div>` : ''}</div>`;
-            }).join('');
         }
 
         function updateStats(nodes, ledger) {
@@ -295,12 +320,6 @@
             sync();
         }
 
-        function updateNavBadge() {
-            const count = allMsgs.filter(m => m.receiver_id === adminUser.id && !m.is_read).length;
-            const b = document.getElementById('navMsgBadge');
-            if(count > 0) { b.innerText = count; b.classList.remove('view-hidden'); } else b.classList.add('view-hidden');
-        }
-
         function openTab(e, n) { 
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); 
             document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active')); 
@@ -308,13 +327,14 @@
             if(e) e.currentTarget.classList.add('active');
         }
 
-        function closeChat() { currentChatId = null; document.getElementById('chatView').classList.add('view-hidden'); document.getElementById('inboxView').classList.remove('view-hidden'); }
+        function closeChat() { currentChatId = null; document.getElementById('chatView').classList.add('view-hidden'); document.getElementById('inboxView').classList.remove('view-hidden'); sync(); }
         function payoutTabClick(e) { openTab(e, 'payouts'); sync(); }
 
         function init() { 
             sync(); 
             _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-                if(currentChatId) refreshChat(); else sync();
+                if(currentChatId) refreshChat();
+                sync();
             }).subscribe(); 
         }
         checkAdmin();
