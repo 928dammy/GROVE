@@ -43,16 +43,24 @@
         .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 12px 0; white-space: nowrap; }
         @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
 
-        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; gap: 4px; margin: 0 1rem 1rem; }
-        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 9px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; }
+        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; gap: 4px; margin: 0 1rem 1rem; position: relative; }
+        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 9px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; position: relative; }
         .tab-trigger.active { color: #fff; background: var(--grove-leaf); }
         .tab-content { display: none; padding: 0 1rem 1rem; flex: 1; overflow-y: auto; }
         .tab-content.active { display: flex; flex-direction: column; }
 
-        .chat-bubble { padding: 12px 16px; border-radius: 1.25rem; max-width: 85%; font-size: 11px; line-height: 1.4; margin-bottom: 12px; }
-        .chat-admin { background: rgba(16, 185, 129, 0.15); border-left: 3px solid var(--emerald); color: white; align-self: flex-start; }
-        .chat-user { background: rgba(255, 255, 255, 0.05); color: #94a3b8; align-self: flex-end; border-right: 3px solid rgba(255,255,255,0.2); text-align: right; }
+        /* Sleek Chat Design */
+        .chat-bubble { padding: 10px 14px; border-radius: 1.25rem; max-width: 80%; font-size: 11px; line-height: 1.5; margin-bottom: 4px; position: relative; }
+        .chat-admin { background: #1e293b; color: #f8fafc; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .chat-user { background: var(--emerald); color: #061a14; align-self: flex-end; border-bottom-right-radius: 4px; font-weight: 600; }
+        .chat-meta { font-size: 7px; text-transform: uppercase; font-weight: 800; color: rgba(255,255,255,0.3); margin-bottom: 12px; }
+        .chat-user + .chat-meta { align-self: flex-end; }
         
+        /* Unread Counter Badge */
+        #msg-count { position: absolute; top: -4px; right: 2px; background: var(--gold); color: #000; font-size: 8px; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid var(--grove-deep); font-weight: 900; opacity: 0; transition: opacity 0.3s; }
+        #msg-count.visible { opacity: 1; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
         .gardener-emoji { position: absolute; font-size: 40px; bottom: 0; animation: walkAndSowEmoji 8s infinite ease-in-out; }
         @keyframes walkAndSowEmoji { 0% { transform: translateX(0); } 30%, 55% { transform: translateX(80px); } 75%, 100% { transform: translateX(0); } }
         .vault-bg { background: linear-gradient(to bottom, #061a14, #064e3b); border-radius: 2rem; min-height: 340px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; width: 100%; }
@@ -87,6 +95,16 @@
         <button onclick="restoreScroll()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg">Review Terminal</button>
     </div>
 
+    <div id="msgModal" class="fixed inset-0 bg-black/90 hidden z-[2000] items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-xs text-center border-t-4 border-emerald-500 shadow-2xl">
+            <div class="soul-container mx-auto mb-4 scale-125"><div class="soul-aura"></div><div class="soul-core"></div></div>
+            <p id="msg-title" class="text-[8px] font-black uppercase text-slate-400 mb-1 tracking-widest">System Update</p>
+            <p id="msg-body" class="text-xs font-bold text-slate-800 italic leading-relaxed mb-6 px-2">Action completed successfully.</p>
+            <p class="text-[7px] font-black text-emerald-600 mb-4 italic uppercase">"Givers Never Lack"</p>
+            <button onclick="toggleModal('msgModal', false)" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase shadow-md">Continue</button>
+        </div>
+    </div>
+
     <header class="seed-header">
         <div class="flex justify-between items-center mb-5">
             <div class="flex items-center gap-3">
@@ -107,7 +125,10 @@
         <nav class="nav-pill">
             <div id="btn-orchard" class="tab-trigger active" onclick="openTab('t-orchard')">Orchard</div>
             <div id="btn-vault" class="tab-trigger" onclick="openTab('t-vault')">Vault</div>
-            <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">Messages</div>
+            <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">
+                Messages
+                <span id="msg-count">0</span>
+            </div>
             <div id="btn-ledger" class="tab-trigger" onclick="openTab('t-ledger')">Ledger</div>
         </nav>
 
@@ -138,7 +159,7 @@
         </section>
 
         <section id="t-comm" class="tab-content h-full">
-            <div id="chat-scroller" class="flex-1 overflow-y-auto pr-2 space-y-4 min-h-[320px] py-4 flex flex-col"></div>
+            <div id="chat-scroller" class="flex-1 overflow-y-auto pr-2 space-y-1 min-h-[320px] py-4 flex flex-col"></div>
             <div class="pt-4 border-t border-white/5">
                 <div class="relative">
                     <input id="chat-input" type="text" placeholder="REPLY TO MISSION..." class="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-5 text-[10px] text-white focus:outline-none">
@@ -181,6 +202,12 @@
         function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
         function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+
+        function notify(title, body) {
+            document.getElementById('msg-title').innerText = title;
+            document.getElementById('msg-body').innerText = body;
+            toggleModal('msgModal', true);
+        }
 
         function restoreScroll() { document.getElementById('manual-pay-card').style.display = 'none'; document.body.classList.remove('withered'); document.body.classList.add('force-scroll'); }
         function showActivationCard() { document.body.classList.add('withered'); document.body.classList.remove('force-scroll'); document.getElementById('manual-pay-card').style.display = 'block'; }
@@ -226,7 +253,6 @@
             document.getElementById('s-reclaim').innerText = `GH₵${graceBalance.toFixed(2)}`;
             document.getElementById('v-balance').innerText = `GH₵${globalVaulted.toFixed(2)}`;
 
-            // Orchard Logic
             if(currentOrchardGrace > 0) {
                 document.getElementById('fruit-disp').classList.remove('hidden');
                 document.getElementById('harvest-btn').classList.remove('hidden');
@@ -258,30 +284,29 @@
             if(!error) {
                 await _gv.from('ledger').delete().eq('user_id', userObj.id).eq('entry_type', 'grace');
                 sync();
+                notify("Harvest Success", `GH₵${amt.toFixed(2)} has been moved to your Grace Balance.`);
             }
         }
 
         async function vaultGrace() {
             const currentGrace = parseFloat(document.getElementById('s-reclaim').innerText.replace('GH₵','')) || 0;
-            if (currentGrace <= 0) return alert("Grace Balance is empty.");
+            if (currentGrace <= 0) return notify("Empty Balance", "There is no Grace to vault yet.");
             
-            // Add to Vault
             const { error } = await _gv.from('ledger').insert([{ 
                 user_id: userObj.id, amount: currentGrace, entry_type: 'vault_deposit', description: `Transfer to Vault` 
             }]);
             
             if(!error) {
-                // Deduct from Grace Balance
                 await _gv.from('ledger').insert([{ 
                     user_id: userObj.id, amount: -currentGrace, entry_type: 'grace_claimed', description: `Moved GH₵${currentGrace.toFixed(2)} to Vault` 
                 }]);
                 sync();
-                alert("Vault Secured.");
+                notify("Vault Secured", `GH₵${currentGrace.toFixed(2)} is now ready for withdrawal.`);
             }
         }
 
         function triggerWithdrawal() { 
-            if(globalVaulted <= 0) return alert("Vault Empty."); 
+            if(globalVaulted <= 0) return notify("Vault Empty", "Move funds from Grace Balance to Vault first."); 
             const fee = globalVaulted * 0.02; 
             document.getElementById('m-avail').innerText = `GH₵${globalVaulted.toFixed(2)}`; 
             document.getElementById('m-fee').innerText = `-GH₵${fee.toFixed(2)}`; 
@@ -291,18 +316,36 @@
 
         async function processWithdrawal() { 
             const { error } = await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -globalVaulted, entry_type: 'withdrawal', description: `Payout (2% fee applied)` }]); 
-            if(!error) { toggleModal('withdrawModal', false); sync(); alert("Logged."); }
+            if(!error) { toggleModal('withdrawModal', false); sync(); notify("Withdrawal Logged", "Your request is pending admin approval."); }
         }
 
         async function fetchMessages() {
             const { data: msgs } = await _gv.from('messages').select('*').or(`receiver_id.eq.${userObj.id},sender_id.eq.${userObj.id}`).order('created_at', { ascending: true });
             const scroller = document.getElementById('chat-scroller');
-            scroller.innerHTML = msgs?.map(m => `
-                <div class="flex flex-col ${m.sender_id === userObj.id ? 'items-end' : 'items-start'}">
-                    <div class="chat-bubble ${m.sender_id === userObj.id ? 'chat-user' : 'chat-admin'}">${m.content}</div>
-                </div>
-            `).join('') || '';
-            scroller.scrollTop = scroller.scrollHeight;
+            
+            // Calculate unread (received by user but not read)
+            const unreadCount = msgs?.filter(m => m.receiver_id === userObj.id && !m.is_read).length || 0;
+            const badge = document.getElementById('msg-count');
+            badge.innerText = unreadCount;
+            badge.className = unreadCount > 0 ? 'visible' : '';
+
+            scroller.innerHTML = msgs?.map(m => {
+                const isMe = m.sender_id === userObj.id;
+                const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return `
+                    <div class="chat-bubble ${isMe ? 'chat-user' : 'chat-admin'}">${m.content}</div>
+                    <div class="chat-meta">${isMe ? 'Sent' : 'Admin'} • ${time}</div>
+                `;
+            }).join('') || '<p class="text-center text-[8px] text-slate-600 mt-20 italic">No transmissions found.</p>';
+            
+            if(document.getElementById('t-comm').classList.contains('active')) {
+                scroller.scrollTop = scroller.scrollHeight;
+                if(unreadCount > 0) markAllRead();
+            }
+        }
+
+        async function markAllRead() {
+            await _gv.from('messages').update({ is_read: true }).eq('receiver_id', userObj.id).eq('is_read', false);
         }
 
         async function sendMessage() {
@@ -314,7 +357,19 @@
         }
 
         function createRain() { const ov = document.getElementById('suspension-overlay'); for(let i=0; i<30; i++) { const d = document.createElement('div'); d.className = 'rain-drop'; d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() * 2 + 's'; ov.appendChild(d); } }
-        function openTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-' + id.split('-')[1]).classList.add('active'); }
+        
+        function openTab(id) { 
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); 
+            document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active')); 
+            document.getElementById(id).classList.add('active'); 
+            document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
+            if(id === 't-comm') {
+                const scroller = document.getElementById('chat-scroller');
+                scroller.scrollTop = scroller.scrollHeight;
+                markAllRead();
+            }
+        }
+
         async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
 
         async function init() { 
