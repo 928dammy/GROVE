@@ -3,428 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GROVE | Terminal Zero</title>
+    <title>GROVE | Master Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; color: white; min-height: 100vh; margin: 0; overflow-x: hidden; }
         .auth-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 1.5rem; }
-        .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.3; transition: 0.3s; cursor: pointer; position: relative; flex: 1; height: 100%; }
+        .nav-link { display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.4; transition: 0.3s; cursor: pointer; position: relative; }
         .nav-link.active { opacity: 1; color: #10b981; }
-        .nav-badge { position: absolute; top: 12px; right: 25%; background: #f43f5e; color: white; font-size: 7px; font-weight: 900; padding: 1px 4px; border-radius: 4px; border: 1px solid #020617; min-width: 12px; text-align: center; }
         .tab-content { display: none; padding-bottom: 120px; }
         .tab-content.active { display: block; animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .input-box { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); color: white; border-radius: 1rem; padding: 1rem; width: 100%; outline: none; font-size: 16px; transition: 0.2s; }
-        .input-box:focus { border-color: #10b981; }
-        .btn-action { padding: 8px; border-radius: 10px; font-size: 8px; font-weight: 900; text-transform: uppercase; text-align: center; cursor: pointer; border: none; }
-        .btn-verify { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
-        .btn-suspend { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
-        .btn-expel { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .input-box { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); color: white; border-radius: 1rem; padding: 1rem; width: 100%; outline: none; font-size: 14px; }
+        .btn-verify { background: #10b981; color: #020617; font-weight: 900; }
+        .status-pill { font-size: 7px; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
         
-        /* Messaging */
-        .bubble-wrapper { display: flex; flex-direction: column; width: 100%; margin-bottom: 12px; }
-        .chat-bubble { padding: 12px 16px; border-radius: 1.2rem; font-size: 11px; max-width: 85%; line-height: 1.4; }
-        .bubble-in { background: rgba(255,255,255,0.08); align-self: flex-start; border-bottom-left-radius: 2px; }
-        .bubble-out { background: #10b981; color: #020617; font-weight: 800; align-self: flex-end; border-bottom-right-radius: 2px; }
+        /* Carousel Billboard */
+        .billboard-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 10px 0; }
+        .billboard-card { min-width: 85%; scroll-snap-align: start; border-radius: 2rem; overflow: hidden; position: relative; height: 220px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a; }
+        .billboard-overlay { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(2,6,23,1) 10%, rgba(2,6,23,0) 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; }
+        
+        .badge { position: absolute; top: 0; right: -5px; background: #f43f5e; color: white; font-size: 8px; padding: 2px 6px; border-radius: 10px; font-weight: 900; border: 2px solid #020617; }
+        
+        /* Modal for Full Node Info */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
 
-        /* Modal */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(20px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .modal-content { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 2rem; width: 100%; max-width: 450px; padding: 24px; position: relative; }
-        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .view-hidden { display: none !important; }
-        .status-pill { font-size: 7px; font-weight: 900; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
     </style>
 </head>
 <body class="bg-slate-950">
 
-    <header class="p-6 sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/5">
-        <div class="flex justify-between items-center bg-slate-900/50 p-3 px-4 border border-white/5 mb-6 rounded-2xl">
-            <div class="flex items-center gap-3">
-                <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <div>
-                    <p id="admin-email" class="text-[7px] font-bold text-slate-500 uppercase">SYNCING...</p>
-                </div>
-            </div>
-            <button onclick="_gv.auth.signOut().then(()=>location.href='consoleenter.html')" class="text-[8px] font-black text-rose-500 uppercase">Logout</button>
+    <div id="nodeModal" class="modal">
+        <div class="auth-card w-full max-w-md p-8 relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-500 font-black">CLOSE</button>
+            <h2 id="mNodeTitle" class="text-xl font-black text-emerald-500 mb-1">NODE DATA</h2>
+            <p id="mNodeEmail" class="text-[10px] text-slate-400 mb-6 font-bold uppercase"></p>
+            <div id="mNodeContent" class="space-y-4"></div>
         </div>
+    </div>
 
-        <div class="flex justify-between items-end mb-4">
+    <header class="p-6 sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/5">
+        <div class="flex justify-between items-center mb-4">
             <div>
                 <h1 class="text-xl font-black italic tracking-tighter text-emerald-500">.admin</h1>
-                <p class="text-[8px] font-black text-amber-500 uppercase tracking-[2px]">Givers Never Lack</p>
+                <p class="text-[8px] font-black text-amber-500 uppercase mt-1 tracking-widest">Givers Never Lack</p>
             </div>
             <div class="text-right">
                 <p id="stat-pool" class="text-lg font-black text-emerald-400 italic">₵0.00</p>
-                <p class="text-[7px] font-black text-slate-500 uppercase">Current Pool</p>
+                <p class="text-[7px] font-black text-slate-500 uppercase">Total Pool</p>
             </div>
         </div>
-
-        <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            <div class="auth-card p-3 min-w-[90px] text-center border-emerald-500/20">
-                <p class="text-[6px] font-black text-emerald-500 uppercase">Vaulted</p>
-                <p id="stat-vaulted" class="text-[10px] font-black">₵0</p>
-            </div>
-            <div class="auth-card p-3 min-w-[90px] text-center">
-                <p class="text-[6px] font-black text-slate-500 uppercase">Total Seed</p>
-                <p id="stat-seeded" class="text-[10px] font-black">₵0</p>
-            </div>
-            <div class="auth-card p-3 min-w-[90px] text-center border-rose-500/20">
-                <p class="text-[6px] font-black text-rose-500 uppercase">Claimed</p>
-                <p id="stat-claimed" class="text-[10px] font-black">₵0</p>
-            </div>
+        <div class="flex justify-between items-center">
+            <div id="admin-email" class="text-[7px] font-bold text-slate-500 uppercase">Terminal Online</div>
+            <button onclick="rebornApp()" class="text-[7px] font-black text-rose-500 bg-rose-500/10 px-3 py-1 rounded-lg border border-rose-500/20">REBORN APP</button>
         </div>
     </header>
 
-    <main class="p-4 max-w-4xl mx-auto">
+    <main class="p-4">
         
         <section id="nodes" class="tab-content active">
-            <div class="mb-6 auth-card p-6 border-blue-500/10">
-                <h3 class="text-[10px] font-black uppercase text-blue-400 mb-4">Verification Entry</h3>
+            <div class="auth-card p-6 mb-4">
+                <h3 class="text-xs font-black uppercase text-blue-400 mb-4 italic">Security Checkpoint</h3>
                 <div class="space-y-3">
-                    <input type="email" id="targetEmail" placeholder="User Email" class="input-box">
+                    <input type="email" id="targetEmail" placeholder="Node Email" class="input-box">
                     <div class="flex gap-2">
                         <input type="number" id="minRange" placeholder="Min ₵" class="input-box">
                         <input type="number" id="maxRange" placeholder="Max ₵" class="input-box">
                     </div>
-                    <button onclick="updateNodeStatus()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[10px] uppercase">Verify & Set Limits</button>
+                    <button onclick="updateNodeStatus()" class="w-full py-4 btn-verify rounded-2xl text-[10px] uppercase">Verify & Lift Lockout</button>
                 </div>
             </div>
-            <input type="text" id="nodeSearch" oninput="sync()" placeholder="Search nodes..." class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs w-full mb-4 outline-none">
-            <div id="nodeList" class="space-y-3"></div>
-        </section>
 
-        <section id="messages" class="tab-content">
-            <div id="inboxView">
-                <div id="contactList" class="space-y-2"></div>
+            <div class="mb-4">
+                <input type="text" id="nodeSearch" oninput="renderNodes()" placeholder="Search Name, Email, or Phone..." class="input-box border-emerald-500/10">
             </div>
-            <div id="chatView" class="view-hidden flex flex-col h-[65vh]">
-                <div class="flex items-center gap-4 bg-white/5 p-3 rounded-2xl mb-4">
-                    <button onclick="closeChat()" class="text-emerald-500 font-bold">←</button>
-                    <p id="activeChatName" class="text-[10px] font-black uppercase"></p>
-                </div>
-                <div id="adminChatBox" class="flex-1 overflow-y-auto no-scrollbar space-y-3 p-2"></div>
-                <div class="mt-4 relative">
-                    <input id="adminReplyInput" type="text" placeholder="MESSAGE..." class="input-box pr-16" onkeydown="if(event.key==='Enter') sendAdminReply()">
-                    <button onclick="sendAdminReply()" class="absolute right-3 top-1/2 -translate-y-1/2 bg-emerald-500 text-black px-4 py-2 rounded-xl text-[9px] font-black">SEND</button>
-                </div>
-            </div>
+            
+            <div id="nodeList" class="space-y-3"></div>
         </section>
 
         <section id="missions" class="tab-content">
             <div class="auth-card p-6 mb-6">
-                <h3 class="text-xs font-black uppercase text-amber-500 mb-4">Mission Broadcast</h3>
+                <h3 id="missionFormTitle" class="text-sm font-black uppercase text-amber-500 mb-4 italic">Deploy Impact Mission</h3>
                 <div class="space-y-3">
-                    <input type="text" id="missionTitle" placeholder="Title" class="input-box">
-                    <textarea id="missionDesc" placeholder="Context..." class="input-box h-20"></textarea>
+                    <input type="hidden" id="editMissionId">
+                    <select id="missionCategory" class="input-box bg-slate-900">
+                        <option value="Social Need">Social Need</option>
+                        <option value="Youth Empowerment">Youth Empowerment</option>
+                        <option value="Environment">Environment</option>
+                    </select>
+                    <input type="text" id="missionTitle" placeholder="Mission Name" class="input-box">
+                    <textarea id="missionDesc" placeholder="The Narrative..." class="input-box h-20"></textarea>
+                    <input type="text" id="missionImage" placeholder="Image URL" class="input-box">
+                    <input type="number" id="missionGoal" placeholder="Goal ₵" class="input-box">
                     <div class="flex gap-2">
-                        <input type="number" id="missionGoal" placeholder="Goal ₵" class="input-box">
-                        <label class="bg-white/5 border border-white/10 rounded-xl px-4 flex items-center justify-center cursor-pointer text-[10px] font-black w-24">
-                            📷 <input type="file" id="missionImg" class="hidden" accept="image/*">
-                        </label>
+                        <button onclick="publishMission()" id="missionSubmitBtn" class="flex-1 py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase">Broadcast</button>
+                        <button onclick="resetMissionForm()" id="missionCancelBtn" class="view-hidden px-4 bg-slate-800 text-white font-black rounded-2xl text-[9px] uppercase">Cancel</button>
                     </div>
-                    <button onclick="publishMission()" id="missionBtn" class="w-full py-4 bg-amber-600 text-white font-black rounded-2xl text-[10px] uppercase">Launch Mission</button>
                 </div>
             </div>
-            <div id="missionList" class="flex gap-4 overflow-x-auto pb-4 no-scrollbar"></div>
+            <div class="billboard-container no-scrollbar" id="billboardContent"></div>
         </section>
 
-        <section id="harvests" class="tab-content">
-            <div class="auth-card p-6 mb-6 border-emerald-500/20">
-                <h3 class="text-xs font-black uppercase text-emerald-500 mb-4 italic">Grace Distribution Terminal</h3>
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="space-y-2">
-                            <label class="text-[7px] font-black text-slate-500 uppercase px-2">Grace Type A (%)</label>
-                            <input type="number" id="graceA" placeholder="Percentage" class="input-box">
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[7px] font-black text-slate-500 uppercase px-2">Grace Type B (Fixed)</label>
-                            <input type="number" id="graceB" placeholder="₵ Amount" class="input-box">
-                        </div>
-                    </div>
-                    <button onclick="distributeGrace()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[10px] uppercase">Execute Global Harvest</button>
+        <section id="harvest" class="tab-content">
+             <div class="auth-card p-6 mb-4">
+                <h3 class="text-sm font-black uppercase text-emerald-500 mb-4 italic">Grace/Wither Broadcast</h3>
+                <p class="text-[9px] text-slate-400 mb-4 uppercase">Directly add funds to all active node vaults</p>
+                <input type="number" id="hAmount" placeholder="Amount per Node ₵" class="input-box mb-3">
+                <button onclick="broadcastGrace()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-xs uppercase">RELEASE GRACE</button>
+             </div>
+             <div class="auth-card p-6">
+                <h3 class="text-sm font-black uppercase text-rose-500 mb-4 italic">System Wither</h3>
+                <p class="text-[9px] text-slate-400 mb-4 uppercase">Reduce all active node vaults (Emergency Recall)</p>
+                <input type="number" id="wAmount" placeholder="Deduction ₵" class="input-box mb-3">
+                <button onclick="broadcastWither()" class="w-full py-4 bg-rose-600 text-white font-black rounded-2xl text-xs uppercase">ENGAGE WITHER</button>
+             </div>
+        </section>
+
+        <section id="messages" class="tab-content">
+            <div id="chatHeader" class="view-hidden mb-4 p-4 auth-card border-emerald-500/20 flex items-center justify-between">
+                <div>
+                    <p class="text-[8px] font-black text-emerald-500 uppercase">Conversation With</p>
+                    <h2 id="activeChatPartner" class="text-sm font-black text-white">---</h2>
+                </div>
+                <button onclick="closeChat()" class="text-[9px] font-black bg-white/10 px-4 py-2 rounded-lg">BACK</button>
+            </div>
+            <div id="contactList" class="space-y-2"></div>
+            <div id="chatBox" class="view-hidden flex flex-col h-[50vh]">
+                <div id="msgFeed" class="flex-1 overflow-y-auto space-y-2 mb-4 p-2 no-scrollbar"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="adminMsgInput" placeholder="Message..." class="input-box">
+                    <button onclick="sendMsg()" class="bg-emerald-500 text-black px-6 rounded-xl font-black text-[10px]">SEND</button>
                 </div>
             </div>
-            <h3 class="text-[10px] font-black text-slate-500 uppercase px-2 mb-4">Current Maturity List</h3>
-            <div id="harvestList" class="space-y-3"></div>
         </section>
 
-        <section id="payouts" class="tab-content">
-            <h3 class="text-[10px] font-black text-slate-500 uppercase px-2 mb-4">Pending Claims</h3>
-            <div id="payoutList" class="space-y-3"></div>
-        </section>
-
-        <section id="ledger" class="tab-content">
-            <div class="auth-card p-4 mb-4"><canvas id="ledgerChart" height="150"></canvas></div>
-            <div id="ledgerTable" class="space-y-2"></div>
-        </section>
+        <section id="payouts" class="tab-content"><div id="payoutList" class="space-y-2"></div></section>
+        <section id="ledger" class="tab-content"><div id="ledgerTable" class="auth-card divide-y divide-white/5"></div></section>
 
     </main>
 
-    <div id="userModal" class="modal-overlay" onclick="closeModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div id="modalBody" class="space-y-4"></div>
-            <div class="flex gap-2 mt-6">
-                <button onclick="saveUserEdits()" class="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase">Save Node Data</button>
-                <button onclick="document.getElementById('userModal').style.display='none'" class="px-6 py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-[10px] uppercase">Exit</button>
-            </div>
+    <nav class="fixed bottom-0 left-0 right-0 h-20 bg-slate-950 border-t border-white/10 flex justify-around items-center z-50">
+        <div class="nav-link active" onclick="openTab(event, 'nodes')"><span>👥</span><p class="text-[7px] font-black uppercase">Nodes</p></div>
+        <div class="nav-link" onclick="openTab(event, 'missions')"><span>🚀</span><p class="text-[7px] font-black uppercase">Impact</p></div>
+        <div class="nav-link" onclick="openTab(event, 'harvest')"><span>🌿</span><p class="text-[7px] font-black uppercase">Harvest</p></div>
+        <div class="nav-link" onclick="openTab(event, 'messages')">
+            <div id="unreadBadge" class="badge view-hidden">0</div>
+            <span>💬</span><p class="text-[7px] font-black uppercase">Chat</p>
         </div>
-    </div>
-
-    <nav class="fixed bottom-0 left-0 right-0 h-20 bg-slate-950/90 border-t border-white/10 backdrop-blur-lg flex items-center z-50">
-        <div class="nav-link active" onclick="openTab(event, 'nodes')"><span>👥</span><p class="text-[6px] font-black uppercase mt-1">Nodes</p></div>
-        <div class="nav-link" onclick="openTab(event, 'messages')"><div id="navMsgBadge" class="nav-badge view-hidden">0</div><span>💬</span><p class="text-[6px] font-black uppercase mt-1">Chat</p></div>
-        <div class="nav-link" onclick="openTab(event, 'missions')"><span>🚀</span><p class="text-[6px] font-black uppercase mt-1">Mission</p></div>
-        <div class="nav-link" onclick="openTab(event, 'harvests')"><span>🌾</span><p class="text-[6px] font-black uppercase mt-1">Harvest</p></div>
-        <div class="nav-link" onclick="openTab(event, 'payouts')"><span>💰</span><p class="text-[6px] font-black uppercase mt-1">Payout</p></div>
-        <div class="nav-link" onclick="openTab(event, 'ledger')"><span>📜</span><p class="text-[6px] font-black uppercase mt-1">Ledger</p></div>
+        <div class="nav-link" onclick="openTab(event, 'payouts')"><span>💰</span><p class="text-[7px] font-black uppercase">Payouts</p></div>
     </nav>
 
     <script>
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
-        const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000";
-        
-        let allNodes = [], allMsgs = [], currentChatId = null, currentEditingUser = null, myChart = null;
+        let adminUser = null, allNodes = [], currentChatId = null, nodeStats = {};
 
         async function sync() {
             const { data: nodes } = await _gv.from('profiles').select('*');
             const { data: ledger } = await _gv.from('ledger').select('*').order('created_at', { ascending: false });
+            const { data: missions } = await _gv.from('system_events').select('*').eq('type', 'mission').order('created_at', { ascending: false });
             const { data: msgs } = await _gv.from('messages').select('*').order('created_at', { ascending: false });
-            const { data: events } = await _gv.from('system_events').select('*').order('created_at', { ascending: false });
             
-            allNodes = nodes || []; allMsgs = msgs || [];
+            allNodes = nodes || [];
+            
+            let globalSeeded = 0, globalTaken = 0;
+            nodeStats = {};
+            nodes?.forEach(n => nodeStats[n.id] = { s:0, v:0, w:0 });
 
-            let seeded = 0, claimed = 0, vaulted = 0;
             ledger?.forEach(l => {
-                const a = Math.abs(parseFloat(l.amount) || 0);
-                if(l.entry_type === 'seed' && !l.description.includes('Vaulted')) seeded += a;
-                if(l.entry_type === 'withdrawal') claimed += a;
-                if(l.description.includes('Vaulted')) vaulted += a;
+                const amt = Math.abs(l.amount);
+                if(l.entry_type === 'seed') globalSeeded += amt;
+                if(l.entry_type === 'withdrawal') globalTaken += amt;
+                if(nodeStats[l.user_id]) {
+                    if(l.entry_type === 'seed' && !l.description.includes('Vault')) nodeStats[l.user_id].s += amt;
+                    if(l.description.includes('Vault')) nodeStats[l.user_id].v += amt;
+                    if(l.entry_type === 'withdrawal') nodeStats[l.user_id].w += amt;
+                }
             });
-            document.getElementById('stat-pool').innerText = `₵${(seeded - claimed).toFixed(2)}`;
-            document.getElementById('stat-vaulted').innerText = `₵${vaulted.toFixed(0)}`;
-            document.getElementById('stat-seeded').innerText = `₵${seeded.toFixed(0)}`;
-            document.getElementById('stat-claimed').innerText = `₵${claimed.toFixed(0)}`;
 
-            const q = document.getElementById('nodeSearch').value.toLowerCase();
-            document.getElementById('nodeList').innerHTML = allNodes.filter(n => n.email?.toLowerCase().includes(q) || n.full_name?.toLowerCase().includes(q)).map(n => `
-                <div class="auth-card p-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <div onclick="showUserInfo('${n.id}')" class="cursor-pointer">
-                            <p class="text-[11px] font-black uppercase text-emerald-500">${n.full_name || 'ANON'}</p>
-                            <p class="text-[7px] text-slate-500 font-bold">${n.email}</p>
+            document.getElementById('stat-pool').innerText = `₵${(globalSeeded - globalTaken).toFixed(2)}`;
+            renderNodes();
+            renderMissions(missions);
+            renderMessages(msgs);
+            renderLedger(ledger);
+        }
+
+        function renderNodes() {
+            const term = document.getElementById('nodeSearch').value.toLowerCase();
+            const filtered = allNodes.filter(n => 
+                (n.full_name || '').toLowerCase().includes(term) || 
+                (n.email || '').toLowerCase().includes(term) || 
+                (n.phone_number || '').toLowerCase().includes(term)
+            );
+
+            document.getElementById('nodeList').innerHTML = filtered.map(n => {
+                const s = nodeStats[n.id] || {s:0, v:0, w:0};
+                const v = n.is_gifter && n.current_range_max > 0;
+                return `
+                <div class="auth-card p-4 border ${v ? 'border-emerald-500/20' : 'border-rose-500/30'}">
+                    <div class="flex justify-between items-start mb-3" onclick="showNodeDetails('${n.id}')">
+                        <div>
+                            <p class="text-[10px] font-black uppercase text-white">${n.full_name || 'New Node'}</p>
+                            <p class="text-[7px] text-emerald-500 font-bold">${n.phone_number || 'No Contact'}</p>
                         </div>
-                        <span class="status-pill ${n.is_verified ? (n.is_suspended ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500/20 text-emerald-500') : 'bg-rose-500/20 text-rose-500'}">
-                            ${n.is_verified ? (n.is_suspended ? 'Suspended' : 'Verified') : 'Locked'}
-                        </span>
+                        <span class="status-pill ${v ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}">${v ? 'Verified' : 'Locked'}</span>
                     </div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="nodeOp('${n.id}', 'verify')" class="btn-action btn-verify">Verify</button>
-                        <button onclick="nodeOp('${n.id}', 'suspend')" class="btn-action btn-suspend">Suspend</button>
-                        <button onclick="nodeOp('${n.id}', 'unverify')" class="btn-action btn-expel">Lock</button>
-                        <button onclick="nodeOp('${n.id}', 'expel')" class="btn-action bg-rose-900/40 text-rose-500">Expel</button>
+                    <div class="flex gap-2">
+                        <button onclick="quickVerify('${n.email}')" class="flex-1 py-2 bg-emerald-500 text-black text-[8px] font-black rounded-lg uppercase">Verify</button>
+                        <button onclick="showNodeDetails('${n.id}')" class="flex-1 py-2 bg-white/5 text-white text-[8px] font-black rounded-lg uppercase">Profile</button>
                     </div>
-                </div>`).join('');
-
-            document.getElementById('harvestList').innerHTML = ledger?.filter(l => l.description.includes('Vaulted')).map(h => `
-                <div class="auth-card p-3 flex justify-between items-center bg-emerald-500/5 border-emerald-500/10">
-                    <div>
-                        <p class="text-[9px] font-black uppercase text-emerald-400">₵${h.amount.toFixed(2)} Maturing</p>
-                        <p class="text-[6px] text-slate-500 font-bold uppercase">${allNodes.find(n=>n.id===h.user_id)?.full_name || 'NODE'}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[7px] font-black text-white uppercase italic">Seeded: ${new Date(h.created_at).toLocaleDateString()}</p>
-                    </div>
-                </div>`).join('') || '<p class="text-center p-6 text-[7px] opacity-20 uppercase font-black">No Active Cycles</p>';
-
-            document.getElementById('payoutList').innerHTML = ledger?.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID')).map(w => `
-                <div class="auth-card p-4 flex justify-between items-center border border-emerald-500/10">
-                    <div>
-                        <p class="text-[10px] font-black uppercase text-white">₵${Math.abs(w.amount).toFixed(2)} Claim</p>
-                        <p class="text-[7px] text-emerald-500 font-bold uppercase">Net: GH₵${(Math.abs(w.amount)*0.98).toFixed(2)} (-2% Fee)</p>
-                    </div>
-                    <button onclick="approvePayout('${w.id}', '${w.user_id}', ${Math.abs(w.amount)})" class="btn-action btn-verify px-6 py-3">Disburse</button>
-                </div>`).join('') || '<p class="text-center p-6 text-[7px] opacity-20 uppercase font-black">Waiting for withdrawals</p>';
-
-            document.getElementById('missionList').innerHTML = events?.filter(e => e.type === 'mission').map(m => `
-                <div class="auth-card min-w-[260px] p-4 flex-shrink-0">
-                    ${m.image_url ? `<img src="${m.image_url}" class="w-full h-24 object-cover rounded-xl mb-3">` : ''}
-                    <p class="text-[10px] font-black uppercase mb-1">${m.title}</p>
-                    <p class="text-[8px] text-amber-500 font-bold uppercase mb-2">₵${m.value} Target</p>
-                    <p class="text-[8px] opacity-60 line-clamp-2">${m.description}</p>
-                </div>`).join('');
-
-            document.getElementById('ledgerTable').innerHTML = ledger?.map(l => `
-                <div class="auth-card p-3 flex justify-between items-center">
-                    <div><p class="text-[9px] font-black uppercase text-white">${l.description}</p><p class="text-[6px] text-slate-500 uppercase">${new Date(l.created_at).toLocaleString()}</p></div>
-                    <p class="text-[10px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
-                </div>`).join('');
-
-            renderInbox(); updateNavBadge(); renderChart(ledger);
-        }
-
-        // GRACE LOGIC
-        async function distributeGrace() {
-            const typeA = parseFloat(document.getElementById('graceA').value) || 0;
-            const typeB = parseFloat(document.getElementById('graceB').value) || 0;
-            if(!typeA && !typeB) return alert("Enter Grace values first.");
-
-            const { data: vaultedItems } = await _gv.from('ledger').select('*').ilike('description', '%Vaulted%');
-            if(!vaultedItems || !vaultedItems.length) return alert("No nodes found in Harvest cycles.");
-
-            if(!confirm(`Apply ${typeA}% Grace A and ₵${typeB} Grace B to all maturing nodes?`)) return;
-
-            for (let item of vaultedItems) {
-                let graceTotal = (item.amount * (typeA/100)) + typeB;
-                // Add to Ledger
-                await _gv.from('ledger').insert([{
-                    user_id: item.user_id,
-                    amount: graceTotal,
-                    entry_type: 'seed',
-                    description: `GRACE DISTRIBUTED: TYPE A(${typeA}%) & B`
-                }]);
-                // Notify Node
-                await _gv.from('messages').insert([{
-                    sender_id: SYSTEM_ADMIN_ID,
-                    receiver_id: item.user_id,
-                    content: `🌾 HARVEST ALERT: Grace has been added to your vault. Givers Never Lack.`
-                }]);
-            }
-            alert("Grace Distribution Complete.");
-            sync();
-        }
-
-        async function showUserInfo(id) {
-            const u = allNodes.find(n => n.id === id);
-            currentEditingUser = id;
-            document.getElementById('modalBody').innerHTML = `
-                <div class="space-y-4">
-                    <div><p class="text-[7px] text-slate-500 uppercase font-bold">Node Identity</p><p class="text-[10px] font-black uppercase">Joined: ${new Date(u.created_at).toLocaleDateString()}</p></div>
-                    <input id="edName" class="input-box text-[13px]" value="${u.full_name || ''}" placeholder="Full Name">
-                    <input id="edEmail" class="input-box text-[13px]" value="${u.email || ''}" placeholder="Email">
-                    <input id="edPhone" class="input-box text-[13px]" value="${u.phone || ''}" placeholder="Phone Number">
-                    <input id="edMax" type="number" class="input-box text-[13px]" value="${u.current_range_max || 0}" placeholder="Gift Limit">
-                </div>`;
-            document.getElementById('userModal').style.display = 'flex';
-        }
-
-        async function saveUserEdits() {
-            const updates = { 
-                full_name: document.getElementById('edName').value.toUpperCase(), 
-                email: document.getElementById('edEmail').value, 
-                phone: document.getElementById('edPhone').value, 
-                current_range_max: parseFloat(document.getElementById('edMax').value) 
-            };
-            await _gv.from('profiles').update(updates).eq('id', currentEditingUser);
-            document.getElementById('userModal').style.display = 'none'; sync();
-        }
-
-        async function publishMission() {
-            const btn = document.getElementById('missionBtn');
-            const file = document.getElementById('missionImg').files[0];
-            const title = document.getElementById('missionTitle').value;
-            const desc = document.getElementById('missionDesc').value;
-            const goal = document.getElementById('missionGoal').value;
-            if(!title || !goal) return alert("Title/Goal Required");
-
-            btn.innerText = "UPLOADING..."; btn.disabled = true;
-            let imgUrl = null;
-            if(file) {
-                const path = `missions/${Date.now()}_${file.name}`;
-                const { data } = await _gv.storage.from('assets').upload(path, file);
-                if(data) imgUrl = `${SB_URL}/storage/v1/object/public/assets/${path}`;
-            }
-            await _gv.from('system_events').insert([{ type:'mission', title: title.toUpperCase(), description: desc, value: parseFloat(goal), image_url: imgUrl }]);
-            btn.innerText = "LAUNCH MISSION"; btn.disabled = false;
-            sync(); alert("Mission Live.");
-        }
-
-        function renderInbox() {
-            document.getElementById('contactList').innerHTML = allNodes.map(n => {
-                const unreads = allMsgs.filter(m => m.sender_id === n.id && m.receiver_id === SYSTEM_ADMIN_ID && !m.is_read).length;
-                return `<div onclick="openUserChat('${n.id}')" class="p-4 auth-card flex justify-between items-center cursor-pointer">
-                    <div><p class="text-[10px] font-black uppercase text-white">${n.full_name || n.email}</p><p class="text-[7px] text-emerald-500 font-bold uppercase tracking-widest">Connected Node</p></div>
-                    ${unreads ? `<span class="bg-rose-500 text-[8px] font-black px-2 py-1 rounded-full">${unreads}</span>` : ''}
                 </div>`;
             }).join('');
         }
 
-        async function openUserChat(id) {
-            currentChatId = id;
-            document.getElementById('inboxView').classList.add('view-hidden');
-            document.getElementById('chatView').classList.remove('view-hidden');
-            document.getElementById('activeChatName').innerText = allNodes.find(n => n.id === id)?.full_name || 'NODE';
-            refreshChat();
+        function showNodeDetails(id) {
+            const n = allNodes.find(x => x.id === id);
+            const s = nodeStats[id];
+            document.getElementById('mNodeTitle').innerText = n.full_name || 'ANONYMOUS';
+            document.getElementById('mNodeEmail').innerText = n.email;
+            document.getElementById('mNodeContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-3 text-[10px] font-bold">
+                    <div class="bg-black/40 p-3 rounded-xl"><p class="text-slate-500 text-[8px]">PHONE</p>${n.phone_number || 'N/A'}</div>
+                    <div class="bg-black/40 p-3 rounded-xl"><p class="text-slate-500 text-[8px]">CAP</p>₵${n.current_range_max}</div>
+                    <div class="bg-black/40 p-3 rounded-xl"><p class="text-slate-500 text-[8px]">VAULT</p>₵${(s.v - s.w).toFixed(2)}</div>
+                    <div class="bg-black/40 p-3 rounded-xl"><p class="text-slate-500 text-[8px]">SEEDED</p>₵${s.s.toFixed(2)}</div>
+                    <div class="col-span-2 bg-black/40 p-3 rounded-xl"><p class="text-slate-500 text-[8px]">ID</p>${n.id}</div>
+                </div>
+            `;
+            document.getElementById('nodeModal').classList.add('active');
         }
 
-        async function refreshChat() {
-            if(!currentChatId) return;
-            const { data } = await _gv.from('messages').select('*').or(`and(sender_id.eq.${currentChatId},receiver_id.eq.${SYSTEM_ADMIN_ID}),and(sender_id.eq.${SYSTEM_ADMIN_ID},receiver_id.eq.${currentChatId})`).order('created_at', { ascending: true });
-            document.getElementById('adminChatBox').innerHTML = data?.map(m => `
-                <div class="bubble-wrapper"><div class="chat-bubble ${m.sender_id === SYSTEM_ADMIN_ID ? 'bubble-out' : 'bubble-in'}">${m.content}</div></div>
-            `).join('');
-            document.getElementById('adminChatBox').scrollTop = document.getElementById('adminChatBox').scrollHeight;
-            await _gv.from('messages').update({ is_read: true }).match({ sender_id: currentChatId, receiver_id: SYSTEM_ADMIN_ID });
+        async function broadcastGrace() {
+            const amt = parseFloat(document.getElementById('hAmount').value);
+            if(!amt) return alert("Enter amount.");
+            for(let node of allNodes) {
+                await _gv.from('ledger').insert([{ user_id: node.id, amount: amt, entry_type: 'seed', description: 'System Grace (Vault)' }]);
+            }
+            alert("Grace Distributed."); sync();
         }
 
-        async function sendAdminReply() {
-            const val = document.getElementById('adminReplyInput').value;
-            if(!val || !currentChatId) return;
-            await _gv.from('messages').insert([{ sender_id: SYSTEM_ADMIN_ID, receiver_id: currentChatId, content: val.toUpperCase(), sender_name: "ADMIN" }]);
-            document.getElementById('adminReplyInput').value = ''; refreshChat();
+        async function broadcastWither() {
+            const amt = parseFloat(document.getElementById('wAmount').value);
+            if(!amt) return alert("Enter amount.");
+            for(let node of allNodes) {
+                await _gv.from('ledger').insert([{ user_id: node.id, amount: -amt, entry_type: 'withdrawal', description: 'System Wither' }]);
+            }
+            alert("Wither Completed."); sync();
         }
 
-        async function nodeOp(id, type) {
-            let u = {};
-            if(type === 'verify') u = { is_verified: true, is_suspended: false };
-            if(type === 'suspend') u = { is_suspended: true };
-            if(type === 'unverify') u = { is_verified: false };
-            if(type === 'expel') { if(confirm("Expel node?")) await _gv.from('profiles').delete().eq('id', id); }
-            else await _gv.from('profiles').update(u).eq('id', id);
+        async function rebornApp() {
+            if(confirm("DANGER: This wipes all data. Continue?")) {
+                if(prompt("Type 'REBORN' to confirm:") === 'REBORN') {
+                    await _gv.from('ledger').delete().neq('id', '0000');
+                    await _gv.from('messages').delete().neq('id', '0000');
+                    await _gv.from('profiles').delete().neq('id', adminUser.id);
+                    location.reload();
+                }
+            }
+        }
+
+        function renderMessages(msgs) {
+            const unread = msgs.filter(m => m.receiver_id === adminUser?.id && !m.is_read).length;
+            const b = document.getElementById('unreadBadge');
+            unread > 0 ? (b.innerText = unread, b.classList.remove('view-hidden')) : b.classList.add('view-hidden');
+
+            if(currentChatId) {
+                const partner = allNodes.find(n => n.id === currentChatId);
+                document.getElementById('activeChatPartner').innerText = partner?.full_name || partner?.email;
+                const thread = msgs.filter(m => m.sender_id === currentChatId || m.receiver_id === currentChatId).reverse();
+                document.getElementById('msgFeed').innerHTML = thread.map(m => `
+                    <div class="flex ${m.sender_id === adminUser.id ? 'justify-end' : 'justify-start'}">
+                        <div class="max-w-[80%] p-3 rounded-2xl text-[11px] font-bold ${m.sender_id === adminUser.id ? 'bg-emerald-500 text-black' : 'bg-white/10 text-white'}">${m.content}</div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('contactList').innerHTML = allNodes.map(n => `
+                    <div onclick="openChat('${n.id}')" class="auth-card p-4 flex justify-between items-center cursor-pointer mb-2">
+                        <p class="text-[10px] font-black uppercase">${n.full_name || n.email}</p>
+                        <span>→</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function openChat(id) { 
+            currentChatId = id; 
+            document.getElementById('contactList').classList.add('view-hidden');
+            document.getElementById('chatHeader').classList.remove('view-hidden');
+            document.getElementById('chatBox').classList.remove('view-hidden');
             sync();
         }
 
-        async function approvePayout(lid, uid, amt) {
-            await _gv.from('ledger').update({ description: `PAID - GH₵${(amt*0.98).toFixed(2)} (CLOSED)` }).eq('id', lid);
-            await _gv.from('messages').insert([{ sender_id: SYSTEM_ADMIN_ID, receiver_id: uid, content: `✅ PAYOUT SUCCESSFUL: GH₵${(amt*0.98).toFixed(2)} SENT. GIVERS NEVER LACK.` }]);
+        function closeChat() {
+            currentChatId = null;
+            document.getElementById('contactList').classList.remove('view-hidden');
+            document.getElementById('chatHeader').classList.add('view-hidden');
+            document.getElementById('chatBox').classList.add('view-hidden');
+        }
+
+        async function sendMsg() {
+            const input = document.getElementById('adminMsgInput');
+            if(!input.value || !currentChatId) return;
+            await _gv.from('messages').insert([{ sender_id: adminUser.id, receiver_id: currentChatId, content: input.value, sender_name: 'ADMIN' }]);
+            input.value = ''; sync();
+        }
+
+        function renderMissions(missions) {
+            document.getElementById('billboardContent').innerHTML = missions?.map(m => `
+                <div class="billboard-card">
+                    <img src="${m.image_url}" class="w-full h-full object-cover opacity-50">
+                    <div class="billboard-overlay">
+                        <h4 class="text-sm font-black italic">${m.title}</h4>
+                        <div class="flex justify-between items-center">
+                            <p class="text-[9px] font-black text-emerald-400">₵${m.value}</p>
+                            <button onclick="editMission('${encodeURIComponent(JSON.stringify(m))}')" class="text-[8px] font-black text-amber-500 uppercase">Edit</button>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function updateNodeStatus() {
+            const e = document.getElementById('targetEmail').value;
+            const m = document.getElementById('maxRange').value;
+            await _gv.from('profiles').update({ is_gifter: true, current_range_max: parseFloat(m) }).eq('email', e);
+            alert("Authorized."); sync();
+        }
+
+        async function quickVerify(email) {
+            await _gv.from('profiles').update({ is_gifter: true, current_range_max: 500 }).eq('email', email);
             sync();
         }
 
-        function renderChart(ledger) {
-            const ctx = document.getElementById('ledgerChart')?.getContext('2d'); if(!ctx) return;
-            const recent = ledger.slice(0,10).reverse();
-            if(myChart) myChart.destroy();
-            myChart = new Chart(ctx, { type:'line', data: { labels: recent.map(r=>''), datasets:[{ data: recent.map(r=>r.amount), borderColor: '#10b981', tension: 0.4, borderWidth: 2, pointRadius: 0 }] }, options: { scales:{y:{display:false},x:{display:false}}, plugins:{legend:{display:false}} } });
+        function openTab(e, n) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById(n).classList.add('active');
+            e.currentTarget.classList.add('active');
+            if(n === 'messages') closeChat();
         }
 
-        function openTab(e, n) { 
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); 
-            document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active')); 
-            document.getElementById(n).classList.add('active'); 
-            if(e) e.currentTarget.classList.add('active');
-            sync();
-        }
-        function closeChat() { currentChatId = null; document.getElementById('chatView').classList.add('view-hidden'); document.getElementById('inboxView').classList.remove('view-hidden'); }
-        function closeModal(e) { if(e.target.id === 'userModal') e.target.style.display = 'none'; }
-        function updateNavBadge() {
-            const c = allMsgs.filter(m => m.receiver_id === SYSTEM_ADMIN_ID && !m.is_read).length;
-            const b = document.getElementById('navMsgBadge');
-            if(c > 0) { b.innerText = c; b.classList.remove('view-hidden'); } else b.classList.add('view-hidden');
-        }
+        function closeModal() { document.getElementById('nodeModal').classList.remove('active'); }
 
         async function init() {
             const { data: { user } } = await _gv.auth.getUser();
-            if(!user) location.href = 'consoleenter.html';
-            document.getElementById('admin-email').innerText = user.email;
+            if (!user) { window.location.href = 'consoleenter.html'; return; }
+            adminUser = user;
             sync();
-            _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => { sync(); if(currentChatId) refreshChat(); }).subscribe();
+            _gv.channel('any').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
         }
         init();
     </script>
