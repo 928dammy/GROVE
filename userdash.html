@@ -3,220 +3,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GROVE | Master Terminal</title>
+    <title>GROVE | User Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --emerald: #10b981; --grove-deep: #061a14; --grove-leaf: #064e3b; --gold: #fbbf24; }
-        html, body { height: 100%; margin: 0; padding: 0; background: #f8fafc; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; max-width: 450px; margin: 0 auto; color: #1e293b; overflow-x: hidden; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; margin: 0; overflow-x: hidden; color: #1e293b; transition: filter 0.5s ease; }
         
-        /* PAYMENT CARD - FIXED OVERLAY */
-        .compact-activation-card {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 1000; width: 92%; max-width: 340px;
-            background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 2.5rem; padding: 1.5rem; text-align: center;
-            box-shadow: 0 0 60px rgba(0,0,0,0.9); display: none;
+        /* THE STORM STATE */
+        body.withered { overflow: hidden !important; background: #020617; }
+        
+        /* THE STORM OVERLAY */
+        #suspension-overlay { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            z-index: 80; 
+            background: rgba(2, 6, 23, 0.4); 
+            pointer-events: none; 
+            transition: backdrop-filter 0.4s ease;
+        }
+        body.withered #suspension-overlay { display: block; animation: lightning 5s infinite; }
+        body.withered #suspension-overlay.blurred { backdrop-filter: blur(10px); }
+
+        @keyframes lightning {
+            0%, 95%, 98% { background: rgba(2, 6, 23, 0.4); }
+            96%, 99% { background: rgba(147, 51, 234, 0.15); }
         }
 
-        .terminal-parent { background: var(--grove-deep); border-radius: 2.5rem; color: #ecfdf5; min-height: 600px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; display: flex; flex-direction: column; margin-top: 10px; }
+        .rain-drop {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            width: 1px;
+            height: 60px;
+            top: -100px;
+            animation: rainFall 0.7s linear infinite;
+        }
+        @keyframes rainFall { to { transform: translateY(110vh); } }
+
+        /* PAYMENT INFO CARD */
+        #manual-pay-card {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000; 
+            width: 85%;
+            max-width: 290px;
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            border-radius: 2rem;
+            padding: 1.5rem;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+            text-align: center;
+            pointer-events: auto !important;
+        }
+        body.withered #manual-pay-card.active { display: block; }
+
+        /* RESTORE BUTTON */
+        #restore-pay-btn {
+            display: none;
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            background: var(--gold);
+            color: black;
+            font-size: 8px;
+            font-weight: 900;
+            padding: 10px 20px;
+            border-radius: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        body.withered #restore-pay-btn.visible { display: block; }
+
+        body.withered .terminal-parent, 
+        body.withered .seed-header { 
+            pointer-events: none !important; 
+            opacity: 0.5;
+        }
+        body.withered #engine-toggle { pointer-events: auto !important; opacity: 1; }
+
+        /* HEADER & UI */
+        .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.02); z-index: 100; }
+        .seed-scatter { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; border-radius: 2rem; }
+        .seed { position: absolute; background: var(--emerald); border-radius: 50%; opacity: 0; animation: scatterGrow 4s infinite ease-out; }
         
+        @keyframes scatterGrow {
+            0% { transform: translateY(20px) scale(0); opacity: 0; }
+            30% { opacity: 0.4; }
+            100% { transform: translateY(-40px) scale(1.5); opacity: 0; }
+        }
+
+        .node-menu { position: fixed; top: 75px; right: 2rem; width: 180px; background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 15px 35px rgba(0,0,0,0.15); display: none; z-index: 500; overflow: hidden; }
+        .node-menu.active { display: block; animation: menuFade 0.2s ease-out; }
+        @keyframes menuFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .menu-item { width: 100%; padding: 14px 20px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #f8fafc; color: #64748b; cursor: pointer; }
+
+        body.withered .menu-item:not(.exit-btn) { opacity: 0.3; pointer-events: none !important; }
+
+        .soul-container { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .soul-core { width: 6px; height: 6px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 10px var(--emerald); animation: breathe 3s infinite; }
+        .soul-aura { position: absolute; inset: 0; border: 1.5px solid rgba(16, 185, 129, 0.2); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; animation: morph 8s infinite linear; }
+        @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.3); opacity: 1; } }
+        @keyframes morph { 0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .terminal-parent { background: var(--grove-deep); border-radius: 2rem; color: #ecfdf5; min-height: 540px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; z-index: 50; display: flex; flex-direction: column; }
+        .broadcast-ticker { position: relative; height: 40px; overflow: hidden; background: rgba(0,0,0,0.2); border-bottom: 1px solid rgba(16, 185, 129, 0.05); flex-shrink: 0; }
         .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 12px 0; white-space: nowrap; }
-        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
 
-        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; gap: 4px; margin: 0 1rem 1rem; }
-        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 9px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 12px 0; text-align: center; border-radius: 8px; position: relative; }
+        /* ANIMATION RESTORED */
+        .gardener-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; }
+        .garden-plot { position: relative; width: 200px; height: 80px; }
+        .gardener-emoji { position: absolute; font-size: 40px; bottom: 0; animation: walkAndSowEmoji 8s infinite ease-in-out; z-index: 10; }
+        .tree-stage { position: absolute; bottom: 0; left: 130px; font-size: 0px; opacity: 0; animation: growthCycleEmoji 8s infinite; }
+        @keyframes walkAndSowEmoji { 0% { transform: translateX(0) scaleX(1); } 30% { transform: translateX(80px) scaleX(1); } 40% { transform: translateX(80px) rotate(25deg); } 55% { transform: translateX(80px) rotate(0deg); } 75% { transform: translateX(0) scaleX(-1); } 100% { transform: translateX(0) scaleX(-1); } }
+        @keyframes growthCycleEmoji { 0%, 40% { font-size: 0px; opacity: 0; } 50% { font-size: 24px; opacity: 1; } 65% { font-size: 32px; } 80% { font-size: 55px; transform: translateY(-10px); } 95% { opacity: 0; } 100% { opacity: 0; } }
+
+        .vault-bg { position: relative; background: linear-gradient(to bottom, #061a14, #064e3b); border-radius: 2.5rem; overflow: hidden; min-height: 300px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .cedis-rain { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+        .cedi-symbol { position: absolute; color: rgba(16, 185, 129, 0.15); font-weight: 900; font-size: 24px; animation: fall linear infinite; }
+        @keyframes fall { from { transform: translateY(-50px) rotate(0deg); opacity: 1; } to { transform: translateY(350px) rotate(360deg); opacity: 0; } }
+
+        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; width: 100%; gap: 4px; }
+        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; }
         .tab-trigger.active { color: #fff; background: var(--grove-leaf); }
+        .tab-content { display: none; padding-top: 5px; flex: 1; overflow-y: auto; }
+        .tab-content.active { display: block; }
         
-        .unread-dot { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; background: #fbbf24; border-radius: 50%; display: none; }
+        /* MESSAGING ENGINE OVERRIDES */
+        #t-comm.active { display: flex; flex-direction: column; height: 100%; }
+        #comm-list { flex: 1; overflow-y: auto; padding-right: 5px; scroll-behavior: smooth; max-height: 280px; }
+        .msg-bubble { padding: 10px 14px; border-radius: 1.25rem; font-size: 10px; font-weight: 600; max-width: 85%; line-height: 1.4; margin-bottom: 8px; }
+        .msg-admin { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #ecfdf5; align-self: flex-start; }
+        .msg-user { background: var(--emerald); color: white; align-self: flex-end; }
 
-        .tab-content { display: none; padding: 0 1rem 1rem; flex: 1; overflow-y: auto; }
-        .tab-content.active { display: flex; flex-direction: column; }
-        
-        #chat-scroller { height: 320px; overflow-y: auto; scroll-behavior: smooth; }
-        .seed-header { background: white; border-radius: 2rem; padding: 1.25rem; margin-top: 10px; border: 1px solid #f1f5f9; }
-
-        /* MODAL SYSTEM */
-        .grove-modal-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.95); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1.5rem; }
-        .grove-modal-box { background: white; width: 100%; max-width: 320px; border-radius: 2.5rem; padding: 2.5rem; text-align: center; color: #020617; }
+        #status-aura { width: 6px; height: 6px; border-radius: 50%; }
+        .status-pulse { animation: statusBreathe 2s infinite ease-in-out; }
+        @keyframes statusBreathe { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } }
     </style>
 </head>
-<body class="px-4">
+<body class="max-w-md mx-auto" onclick="closeMenu()">
 
-    <div id="modal-withdrawal" class="grove-modal-overlay">
-        <div class="grove-modal-box">
-            <h3 class="text-xl font-black italic mb-2">WITHDRAWAL</h3>
-            <p id="mw-details" class="text-[10px] leading-relaxed text-slate-500 uppercase font-bold mb-6"></p>
-            <button onclick="executeWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[10px] uppercase mb-3">Confirm Claim</button>
-            <button onclick="closeModal('modal-withdrawal')" class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cancel</button>
-        </div>
-    </div>
+    <div id="suspension-overlay" class="blurred"></div>
+    <button id="restore-pay-btn" onclick="togglePayCard(true)">Restore Payment Card</button>
 
-    <div id="manual-pay-card" class="compact-activation-card">
-        <div id="p-net-logo" class="h-10 mb-3 bg-center bg-no-repeat bg-contain"></div>
-        <p id="p-net-name" class="text-[8px] font-black uppercase tracking-[0.2em] mb-4">Network Node Pending</p>
-        
-        <div class="bg-black/40 rounded-3xl p-5 mb-5 space-y-4 text-left border border-white/5">
-            <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">Recipient</span><span id="p-reg-name" class="text-[9px] text-white font-bold italic">---</span></div>
-            <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">Merchant No.</span><span id="p-merch-no" class="text-[11px] font-black tracking-widest">---</span></div>
-            <div class="flex justify-between items-center"><span class="text-[7px] text-slate-500 font-black uppercase">Seed Amount</span><span id="p-gift-val" class="text-[11px] text-white font-black">₵0.00</span></div>
-            
-            <div class="text-center pt-3 bg-white/5 rounded-2xl py-3 mt-2">
-                <p class="text-[7px] text-emerald-500 font-black italic mb-1 uppercase tracking-widest">Reference ID</p>
-                <p id="p-unique-ref" class="text-2xl text-amber-400 tracking-[0.3em] font-black">----</p>
+    <div id="manual-pay-card" class="active">
+        <p class="text-[8px] font-black text-amber-500 uppercase tracking-[0.2em] mb-1 italic">Activation Required</p>
+        <h3 class="text-lg font-black text-white italic tracking-tighter mb-4">NODE LOCKOUT</h3>
+        <div class="bg-black/40 rounded-xl p-4 border border-white/5 mb-4 text-center">
+            <div id="p-net-logo" class="w-8 h-8 rounded-lg mx-auto mb-2 shadow-lg"></div>
+            <div class="space-y-3">
+                <div class="flex justify-between items-end border-b border-white/5 pb-2">
+                    <p class="text-[7px] font-bold text-slate-400 uppercase italic">Amount</p>
+                    <p class="text-lg font-black text-white italic">₵<span id="p-amount">0.00</span></p>
+                </div>
+                <div class="flex justify-between items-end border-b border-white/5 pb-2">
+                    <p class="text-[7px] font-bold text-slate-400 uppercase italic">Merchant</p>
+                    <p id="p-merch" class="text-sm font-black text-amber-400 tracking-wider">0000000000</p>
+                </div>
+                <div class="pt-1">
+                    <p class="text-[7px] font-bold text-emerald-500 uppercase mb-0.5 tracking-widest">Reference</p>
+                    <p id="p-ref" class="text-xl font-black text-white tracking-[0.2em]">----</p>
+                </div>
             </div>
         </div>
-        <button onclick="confirmPaymentAction()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg mb-2">I have already paid</button>
-        <button onclick="hidePaymentCard()" class="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-2">Close View</button>
+        <button onclick="confirmPayClaim()" class="w-full py-3 bg-emerald-600 text-white font-black rounded-xl text-[9px] uppercase tracking-widest shadow-lg mb-2">I HAVE PAID</button>
+        <button onclick="togglePayCard(false)" class="w-full text-[7px] font-black text-slate-500 uppercase tracking-widest">Hide Lock</button>
+    </div>
+
+    <div id="nodeMenu" class="node-menu">
+        <button onclick="requestOp('Email Update Requested')" class="menu-item">Change Email</button>
+        <button onclick="requestOp('Phone Addition Requested')" class="menu-item">Add Phone</button>
+        <button onclick="requestOp('Support Issue Reported')" class="menu-item">Report Issue</button>
+        <button onclick="confirmOp('Delete Account?')" class="menu-item text-rose-500">Delete Account</button>
+        <button onclick="logout()" class="menu-item text-red-500 font-black exit-btn">Exit Terminal</button>
     </div>
 
     <header class="seed-header">
-        <div class="flex justify-between items-center mb-5">
-            <div><h1 class="text-base font-black italic">GROVE</h1><p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase">SYNCING...</p></div>
-            <button onclick="logout()" class="text-[7px] font-black text-rose-500 border px-4 py-1.5 rounded-lg bg-white">EXIT ⏻</button>
+        <div class="seed-scatter" id="seed-box"></div>
+        <div class="relative z-10 flex justify-between items-center mb-5">
+            <div class="flex items-center gap-3">
+                <div class="soul-container"><div class="soul-aura"></div><div class="soul-core"></div></div>
+                <div>
+                    <h1 class="text-base font-black tracking-tighter italic text-slate-900">GROVE</h1>
+                    <p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase italic">NODE ACTIVE</p>
+                </div>
+            </div>
+            <button id="engine-toggle" onclick="toggleMenu(event)" class="text-[7px] font-black text-slate-400 uppercase border border-slate-100 px-4 py-1.5 rounded-lg bg-white relative z-[600] flex items-center gap-1">
+                <span>ENGINE ROOM</span> ⚙️
+            </button>
         </div>
-        <div class="flex gap-3">
-            <div class="flex-1 bg-slate-50 p-4 rounded-2xl border"><p class="text-[8px] font-black text-slate-400 uppercase">Seed Base</p><div id="s-seed" class="text-sm font-black italic">GH₵0.00</div></div>
-            <div class="flex-1 bg-emerald-50 p-4 rounded-2xl border-b-2 border-emerald-200"><p class="text-[8px] font-black text-emerald-600 uppercase">Grace Balance</p><div id="s-reclaim" class="text-sm font-black italic">GH₵0.00</div></div>
+        
+        <div class="relative z-10 flex gap-3">
+            <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center mb-1">
+                    <div id="status-group" class="flex items-center gap-1.5">
+                        <p class="text-[8px] font-black text-slate-400 uppercase">Seed Base</p>
+                    </div>
+                    <div id="status-aura" class="status-pulse bg-emerald-500"></div>
+                </div>
+                <div class="text-sm font-black text-slate-900 tracking-tighter" id="s-seed">GH₵0.00</div>
+            </div>
+            <div class="flex-1 bg-emerald-50 p-4 rounded-2xl border-b-2 border-emerald-200">
+                <p class="text-[8px] font-black text-emerald-600 uppercase mb-1">Available Grace</p>
+                <p id="s-reclaim" class="text-sm font-black text-emerald-600 tracking-tighter">GH₵0.00</p>
+            </div>
         </div>
     </header>
 
     <main class="terminal-parent">
-        <div class="broadcast-ticker"><div class="ticker-move italic">GIVERS NEVER LACK • NODE OPERATIONAL • SECURE ENCRYPTION ACTIVE • 2% SERVICE FEE APPLIES TO ALL WITHDRAWALS •</div></div>
-        
-        <nav class="nav-pill">
-            <div id="btn-orchard" class="tab-trigger active" onclick="openTab('t-orchard')">Orchard</div>
-            <div id="btn-vault" class="tab-trigger" onclick="openTab('t-vault')">Vault</div>
-            <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">
-                Messages
-                <div id="unread-dot" class="unread-dot"></div>
-            </div>
-        </nav>
+        <div class="broadcast-ticker">
+            <div id="ticker-output" class="ticker-move italic">GIVERS NEVER LACK • NODE OPERATIONAL • ENCRYPTION SECURE • ...</div>
+        </div>
+        <div class="p-4 flex flex-col flex-1">
+            <nav class="nav-pill mb-6">
+                <div id="btn-orchard" class="tab-trigger active" onclick="openTab('t-orchard')">Orchard</div>
+                <div id="btn-vault" class="tab-trigger" onclick="openTab('t-vault')">Vault</div>
+                <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">Inbox</div>
+                <div id="btn-ledger" class="tab-trigger" onclick="openTab('t-ledger')">Ledger</div>
+            </nav>
 
-        <section id="t-orchard" class="tab-content active">
-            <div class="p-6 text-center border border-white/5 bg-white/5 rounded-[2rem]">
-                <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Network Status</p>
-                <h3 id="orchard-status" class="text-xl font-black italic mt-2">ACTIVE</h3>
-            </div>
-            <button id="show-pay-btn" onclick="showPaymentCard()" class="mt-4 py-3 border border-amber-500/30 bg-amber-500/5 text-amber-500 text-[9px] font-black uppercase rounded-xl italic">View Activation Node</button>
-        </section>
+            <section id="t-orchard" class="tab-content active">
+                <div class="gardener-zone">
+                    <div class="garden-plot">
+                        <div class="gardener-emoji">🧑‍🌾</div>
+                        <div class="tree-stage">🌳</div>
+                    </div>
+                    <p class="text-[7px] font-black text-emerald-500/40 uppercase tracking-[0.3em] mt-4">Nurturing Active Nodes</p>
+                </div>
+                <div id="orchard-list" class="space-y-3"></div>
+            </section>
 
-        <section id="t-comm" class="tab-content">
-            <div id="chat-scroller" class="space-y-4 py-4 flex flex-col"></div>
-            <div class="pt-4 border-t border-white/5 flex gap-2">
-                <input id="chat-input" type="text" placeholder="SECURE CHANNEL..." class="flex-1 bg-black/40 border border-white/10 rounded-xl py-4 px-5 text-[10px] text-white outline-none">
-                <button id="send-msg-btn" onclick="sendMsg()" class="bg-emerald-600 px-6 rounded-xl text-[9px] font-black text-white uppercase">Send</button>
-            </div>
-        </section>
+            <section id="t-vault" class="tab-content">
+                <div class="vault-bg p-12 text-center" onclick="triggerWithdrawal()">
+                    <div class="cedis-rain" id="cedis-box"></div>
+                    <div class="relative z-10">
+                        <p class="text-[8px] font-black text-emerald-400 uppercase mb-2 italic">Claim Vaulted</p>
+                        <h2 id="v-balance" class="text-4xl font-black italic text-white mb-8 tracking-tighter">GH₵0.00</h2>
+                        <div class="py-2 px-6 bg-white/10 rounded-full inline-block border border-white/20">
+                            <p class="text-[7px] font-black text-white uppercase tracking-widest">Withdraw Funds</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <section id="t-vault" class="tab-content">
-            <div class="bg-emerald-950/50 rounded-[2.5rem] p-8 text-center border border-white/5">
-                <p class="text-[8px] font-black text-emerald-400 uppercase mb-2">Vaulted Balance</p>
-                <h2 id="v-balance" class="text-3xl font-black italic text-white mb-6">GH₵0.00</h2>
-                <button onclick="triggerWithdrawal()" class="w-full py-4 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">Withdraw</button>
-            </div>
-        </section>
+            <section id="t-comm" class="tab-content">
+                <div id="comm-list" class="flex flex-col mb-4"></div>
+                <div class="mt-auto pt-4 border-t border-white/10 flex gap-2">
+                    <input id="chat-input" type="text" placeholder="TYPE MESSAGE..." class="flex-1 bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-[10px] text-white outline-none">
+                    <button onclick="sendMsg()" class="bg-emerald-600 px-5 rounded-xl text-[9px] font-black text-white uppercase">Send</button>
+                </div>
+            </section>
+
+            <section id="t-ledger" class="tab-content"><div id="ledger-content" class="bg-black/20 rounded-2xl divide-y divide-white/5 overflow-hidden"></div></section>
+        </div>
     </main>
+
+    <div id="withdrawModal" class="fixed inset-0 bg-black/95 hidden z-[700] items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-xs text-center">
+            <p class="text-[10px] font-black uppercase text-emerald-600 mb-1">Claim Vaulted</p>
+            <div class="space-y-4 my-6">
+                <div class="flex justify-between text-[9px] font-black uppercase">
+                    <span class="text-slate-400">Available</span>
+                    <span id="m-avail" class="text-slate-900">GH₵0.00</span>
+                </div>
+                <div class="flex justify-between text-[9px] font-black uppercase border-b border-slate-100 pb-2">
+                    <span class="text-rose-500">Fee (2%)</span>
+                    <span id="m-fee" class="text-rose-500">-GH₵0.00</span>
+                </div>
+                <div class="flex justify-between text-base font-black italic tracking-tighter">
+                    <span class="text-slate-900">Payout</span>
+                    <span id="m-final" class="text-emerald-600">GH₵0.00</span>
+                </div>
+            </div>
+            <button onclick="processWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase tracking-widest mb-2 shadow-lg">Confirm</button>
+            <button onclick="toggleModal('withdrawModal', false)" class="w-full text-[8px] font-black text-slate-400 uppercase py-2">Close</button>
+        </div>
+    </div>
 
     <script>
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         
-        let userObj = null;
-        let pendingWithdrawal = 0;
-        const ADMIN_UUID = '00000000-0000-0000-0000-000000000000';
+        let userObj = null, globalVaulted = 0;
+        const ADMIN_ID = '00000000-0000-0000-0000-000000000000';
 
-        // 1. DATA SYNC
-        async function sync() {
-            const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
-            if (!profile) return;
+        function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
+        function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
+        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
 
-            // Populate Text
-            document.getElementById('user-display').innerText = profile.full_name.toUpperCase();
-            document.getElementById('p-reg-name').innerText = profile.full_name;
-            document.getElementById('p-gift-val').innerText = `GH₵ ${(profile.current_range_max || 0).toFixed(2)}`;
-            document.getElementById('p-unique-ref').innerText = profile.payment_ref || "----";
-            
-            // Balances (Ledger Logic)
-            const { data: ledger } = await _gv.from('ledger').select('amount, entry_type').eq('user_id', userObj.id);
-            let seeds = 0; let vault = 0;
-            ledger?.forEach(l => {
-                if(l.entry_type === 'seed') seeds += l.amount;
-                if(l.entry_type === 'gift_received') vault += l.amount;
-                if(l.entry_type === 'withdrawal') vault -= l.amount;
-            });
-
-            document.getElementById('s-seed').innerText = `GH₵ ${seeds.toFixed(2)}`;
-            document.getElementById('s-reclaim').innerText = `GH₵ ${vault.toFixed(2)}`;
-            document.getElementById('v-balance').innerText = `GH₵ ${vault.toFixed(2)}`;
-
-            // Network Config
-            const net = profile.network || 'MTN';
-            const merch = net === 'MTN' ? '0535261448' : (net === 'TELECEL' ? '020XXXXXXX' : '026XXXXXXX');
-            document.getElementById('p-merch-no').innerText = merch;
-            document.getElementById('p-net-name').innerText = net;
-
-            // Activation Logic
-            if (profile.is_verified) {
-                hidePaymentCard();
-                document.getElementById('show-pay-btn').classList.add('hidden');
-                document.getElementById('orchard-status').innerText = "VERIFIED NODE";
-                document.getElementById('orchard-status').classList.add('text-emerald-400');
-            } else {
-                showPaymentCard();
-                document.getElementById('orchard-status').innerText = "AWAITING SEED";
-            }
-            fetchMessages();
-        }
-
-        // 2. WITHDRAWAL LOGIC (2% FEE)
         function triggerWithdrawal() {
-            const bal = parseFloat(document.getElementById('v-balance').innerText.replace('GH₵ ', ''));
-            if(bal <= 0) return alert("Insufficient Balance.");
-            
-            const fee = bal * 0.02;
-            const net = bal - fee;
-            pendingWithdrawal = bal;
-
-            document.getElementById('mw-details').innerHTML = `
-                Available: GH₵ ${bal.toFixed(2)}<br>
-                Service Charge (2%): GH₵ ${fee.toFixed(2)}<br>
-                <span class="text-emerald-500">Claimable: GH₵ ${net.toFixed(2)}</span>
-            `;
-            openModal('modal-withdrawal');
+            if(globalVaulted <= 0) return;
+            const fee = globalVaulted * 0.02;
+            const payout = globalVaulted - fee;
+            document.getElementById('m-avail').innerText = `GH₵${globalVaulted.toFixed(2)}`;
+            document.getElementById('m-fee').innerText = `-GH₵${fee.toFixed(2)}`;
+            document.getElementById('m-final').innerText = `GH₵${payout.toFixed(2)}`;
+            toggleModal('withdrawModal', true);
         }
 
-        async function executeWithdrawal() {
+        async function processWithdrawal() {
+            const fee = globalVaulted * 0.02;
+            const final = globalVaulted - fee;
             const { error } = await _gv.from('ledger').insert([{
                 user_id: userObj.id,
-                amount: pendingWithdrawal,
+                amount: -globalVaulted,
                 entry_type: 'withdrawal',
-                description: 'Withdrawal Claim Initiated'
+                description: `Claimed GH₵${final.toFixed(2)} (2% deductible applied)`
             }]);
-            
-            if(!error) {
-                alert("Withdrawal Requested. Funds will be sent to your MoMo number.");
-                closeModal('modal-withdrawal');
-                sync();
-            }
+            if(!error) { toggleModal('withdrawModal', false); sync(); alert("Request Dispatched."); }
         }
 
-        // 3. MESSAGING
-        async function sendMsg() {
-            const input = document.getElementById('chat-input');
-            if(!input.value) return;
-            const content = input.value;
-            input.value = '';
+        function togglePayCard(show) {
+            const card = document.getElementById('manual-pay-card'), btn = document.getElementById('restore-pay-btn'), ov = document.getElementById('suspension-overlay');
+            if(show) { card.classList.add('active'); btn.classList.remove('visible'); ov.classList.add('blurred'); }
+            else { card.classList.remove('active'); btn.classList.add('visible'); ov.classList.remove('blurred'); }
+        }
+
+        async function init() {
+            const { data: { user } } = await _gv.auth.getUser();
+            if(!user) return window.location.href = "index.html";
+            userObj = user;
+            createRain(); createCedis();
+            await sync();
+            _gv.channel('any').on('postgres_changes', {event:'*', schema:'public'}, () => sync()).subscribe();
+        }
+
+        async function sync() {
+            const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
+            if(!profile) return;
+
+            const isLock = profile.is_verified !== true || profile.is_suspended === true;
             
-            await _gv.from('messages').insert([{ 
-                sender_id: userObj.id, 
-                receiver_id: ADMIN_UUID, 
-                content: content 
-            }]);
+            if (isLock) {
+                document.body.classList.add('withered');
+                document.getElementById('user-display').innerText = profile.is_suspended ? "SUSPENDED" : "PENDING";
+                
+                // POPULATE PAYMENT CARD FROM SIGNUP DATA
+                document.getElementById('p-amount').innerText = parseFloat(profile.current_range_max || 0).toFixed(2);
+                document.getElementById('p-ref').innerText = profile.payment_ref || "GROVE";
+                
+                const merch = document.getElementById('p-merch'), logo = document.getElementById('p-net-logo');
+                const net = (profile.network || "MTN").toUpperCase();
+                
+                if(net === "MTN") { 
+                    merch.innerText = "0535261448"; 
+                    logo.style.background = "#fbbf24"; 
+                } else if(net === "TELECEL") { 
+                    merch.innerText = "020XXXXXXX"; 
+                    logo.style.background = "#ef4444"; 
+                } else { 
+                    merch.innerText = "026XXXXXXX"; 
+                    logo.style.background = "#3b82f6"; 
+                }
+            } else {
+                document.body.classList.remove('withered');
+                document.getElementById('manual-pay-card').classList.remove('active');
+                document.getElementById('user-display').innerText = profile.full_name?.toUpperCase() || "NODE ACTIVE";
+            }
+
+            const { data: myLedger } = await _gv.from('ledger').select('*').eq('user_id', userObj.id).order('created_at', { ascending: false });
+            let tr=0, tv=0, tw=0, sa=0;
+            myLedger?.forEach(l => {
+                const v = parseFloat(l.amount) || 0;
+                if (l.entry_type === 'seed' && !l.description.includes('Vault')) sa += v;
+                if (l.entry_type === 'gift_received') tr += v;
+                if (l.description.includes('Vault')) tv += v;
+                if (l.entry_type === 'withdrawal') tw += Math.abs(v);
+            });
+            globalVaulted = Math.max(0, tv-tw);
+            document.getElementById('s-seed').innerText = `GH₵${sa.toFixed(2)}`;
+            document.getElementById('s-reclaim').innerText = `GH₵${Math.max(0, tr-tv).toFixed(2)}`;
+            document.getElementById('v-balance').innerText = `GH₵${globalVaulted.toFixed(2)}`;
+            
             fetchMessages();
         }
 
@@ -226,64 +394,69 @@
                 .or(`sender_id.eq.${userObj.id},receiver_id.eq.${userObj.id}`)
                 .order('created_at', { ascending: true });
             
-            const container = document.getElementById('chat-scroller');
-            let hasUnread = false;
-
-            container.innerHTML = msgs.map(m => {
-                if(!m.is_read && m.sender_id === ADMIN_UUID) hasUnread = true;
-                const isMe = m.sender_id === userObj.id;
-                return `
-                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
-                        <div class="p-3 rounded-2xl max-w-[85%] text-[10px] ${isMe ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-100' : 'bg-white/5 border border-white/10 text-slate-300'}">
-                            ${m.content}
-                        </div>
-                    </div>
-                `;
+            const list = document.getElementById('comm-list');
+            list.innerHTML = (msgs || []).map(m => {
+                const isAdmin = m.sender_id === ADMIN_ID;
+                return `<div class="msg-bubble ${isAdmin ? 'msg-admin' : 'msg-user'}">${m.content}</div>`;
             }).join('');
-            
-            document.getElementById('unread-dot').style.display = hasUnread ? 'block' : 'none';
-            container.scrollTop = container.scrollHeight;
+            list.scrollTop = list.scrollHeight;
         }
 
-        // 4. UTILS
+        async function sendMsg() {
+            const input = document.getElementById('chat-input');
+            if(!input.value) return;
+            const content = input.value;
+            input.value = '';
+            await _gv.from('messages').insert([{ 
+                sender_id: userObj.id, 
+                receiver_id: ADMIN_ID, 
+                content: content 
+            }]);
+            fetchMessages();
+        }
+
+        async function confirmPayClaim() {
+            const ref = document.getElementById('p-ref').innerText;
+            await _gv.from('messages').insert([{ 
+                sender_id: userObj.id, 
+                receiver_id: ADMIN_ID, 
+                content: `PAY_CLAIM: Payment of Ref ${ref} completed.` 
+            }]);
+            alert("Verification Sent. Standby.");
+            togglePayCard(false);
+        }
+
+        function createRain() {
+            const ov = document.getElementById('suspension-overlay');
+            for(let i=0; i<40; i++) {
+                const d = document.createElement('div'); d.className = 'rain-drop';
+                d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() * 2 + 's';
+                ov.appendChild(d);
+            }
+        }
+
+        function createCedis() {
+            const box = document.getElementById('cedis-box');
+            if(!box) return;
+            for(let i=0; i<15; i++) {
+                const s = document.createElement('div'); s.className = 'cedi-symbol';
+                s.innerText = '₵'; s.style.left = Math.random() * 100 + '%';
+                s.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                s.style.animationDelay = Math.random() * 5 + 's';
+                box.appendChild(s);
+            }
+        }
+
         function openTab(id) {
+            if(document.body.classList.contains('withered')) return;
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
-            if(id === 't-comm') {
-                document.getElementById('unread-dot').style.display = 'none';
-                _gv.from('messages').update({ is_read: true }).eq('receiver_id', userObj.id);
-            }
         }
 
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function showPaymentCard() { document.getElementById('manual-pay-card').style.display = 'block'; }
-        function hidePaymentCard() { document.getElementById('manual-pay-card').style.display = 'none'; }
-
-        async function confirmPaymentAction() {
-            const ref = document.getElementById('p-unique-ref').innerText;
-            await _gv.from('messages').insert([{ 
-                sender_id: userObj.id, 
-                receiver_id: ADMIN_UUID, 
-                content: `SYSTEM_PAY_CLAIM: Reference ${ref} has been paid.` 
-            }]);
-            alert("Admin notified. Node will activate shortly.");
-            hidePaymentCard();
-        }
-
-        async function init() { 
-            const { data: { user } } = await _gv.auth.getUser(); 
-            if(!user) return window.location.href = "index.html"; 
-            userObj = user; 
-            sync(); 
-            // Realtime
-            _gv.channel('any').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
-        }
-        
-        init();
         async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
+        init();
     </script>
 </body>
 </html>
