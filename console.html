@@ -197,15 +197,7 @@
             const { data: { user } } = await _gv.auth.getUser();
             if (!user) { window.location.href = 'consoleenter.html'; return; }
             
-            // SECURITY GATE: Prevents regular users from taking over the console session
-            const { data: profile } = await _gv.from('profiles').select('is_admin').eq('id', user.id).single();
-            if (!profile || !profile.is_admin) {
-                alert("ACCESS DENIED: No manager privileges detected.");
-                await _gv.auth.signOut();
-                window.location.href = 'consoleenter.html';
-                return;
-            }
-
+            // Reverted to simple auth check as requested - if they are in, they are in.
             adminUser = user;
             document.getElementById('admin-email').innerText = user.email;
             init();
@@ -326,7 +318,8 @@
         }
 
         async function approvePayout(id, raw, userId) {
-            const net = raw * 0.98;
+            const fee = raw * 0.02;
+            const net = raw - fee;
             if(!confirm(`Approve GH₵${net.toFixed(2)} (2% Fee Deducted)?`)) return;
             await _gv.from('ledger').update({ description: `PAID GH₵${net.toFixed(2)}` }).eq('id', id);
             await _gv.from('messages').insert([{ sender_id: adminUser.id, receiver_id: userId, sender_name: "SYSTEM", content: `✅ PAYOUT: GH₵${net.toFixed(2)} DISPATCHED.` }]);
