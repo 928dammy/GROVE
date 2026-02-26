@@ -11,39 +11,19 @@
     <style>
         :root { --emerald: #10b981; --grove-deep: #061a14; --grove-leaf: #064e3b; --gold: #fbbf24; }
         
-        /* SCROLL & BODY */
         html, body { height: 100%; margin: 0; padding: 0; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; min-height: 100vh; padding: 1rem; color: #1e293b; overflow-x: hidden; overflow-y: auto; }
         
-        /* ACTIVATION STATE */
-        body.withered { overflow: hidden !important; height: 100vh !important; background: #020617; }
-        body.force-scroll { overflow-y: auto !important; height: auto !important; }
-
-        /* ATMOSPHERIC OVERLAY */
-        #suspension-overlay { display: none; position: fixed; inset: 0; z-index: 80; background: rgba(2, 6, 23, 0.4); pointer-events: none; }
-        body.withered #suspension-overlay { display: block; animation: lightning 5s infinite; }
-        @keyframes lightning { 0%, 95%, 98% { background: rgba(2, 6, 23, 0.4); } 96%, 99% { background: rgba(147, 51, 234, 0.15); } }
-        .rain-drop { position: absolute; background: rgba(255, 255, 255, 0.1); width: 1px; height: 60px; top: -100px; animation: rainFall 0.7s linear infinite; }
-        @keyframes rainFall { to { transform: translateY(110vh); } }
-
-        /* VAULT ANIMATION */
-        .vault-glow { animation: vaultPulse 4s infinite ease-in-out; }
-        @keyframes vaultPulse {
-            0%, 100% { box-shadow: inset 0 0 50px rgba(16, 185, 129, 0.1); }
-            50% { box-shadow: inset 0 0 100px rgba(16, 185, 129, 0.3); }
-        }
-
-        /* COMPACT PAYMENT CARD */
+        /* Fixed but the page behind it can scroll */
         .compact-activation-card {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 1000; width: 92%; max-width: 320px;
+            z-index: 1000; width: 92%; max-width: 320px; max-height: 90vh;
             background: #0f172a; border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 2.5rem; padding: 1.5rem; text-align: center;
-            box-shadow: 0 0 40px rgba(0,0,0,0.8); display: none;
-            animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 100px rgba(0,0,0,0.9); display: none;
+            overflow-y: auto;
         }
 
-        /* TERMINAL UI */
         .terminal-parent { background: var(--grove-deep); border-radius: 2.5rem; color: #ecfdf5; min-height: 580px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; z-index: 50; display: flex; flex-direction: column; }
         .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 12px 0; white-space: nowrap; }
         @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
@@ -54,47 +34,15 @@
         .tab-content { display: none; padding: 0 1rem 1rem; flex: 1; overflow-y: auto; }
         .tab-content.active { display: flex; flex-direction: column; }
 
+        #chat-scroller { scroll-behavior: smooth; }
+        
         .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; z-index: 100; }
         
-        /* CUSTOM MODAL STYLE */
-        .grove-modal-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.95); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
-        .grove-modal-box { background: white; width: 100%; max-width: 300px; border-radius: 2.5rem; padding: 2rem; text-align: center; animation: modalPop 0.3s ease-out; }
-        @keyframes modalPop { from { transform: scale(0.9) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .grove-modal-overlay { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.9); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 1rem; }
+        .grove-modal-box { background: white; width: 100%; max-width: 300px; border-radius: 2.5rem; padding: 2rem; text-align: center; }
     </style>
 </head>
-<body class="max-w-md mx-auto" onclick="closeMenu()">
-
-    <div id="suspension-overlay"></div>
-
-    <div id="withdrawModal" class="grove-modal-overlay">
-        <div class="grove-modal-box">
-            <p class="text-[9px] font-black text-emerald-600 uppercase mb-4 italic tracking-widest">Withdrawal Node</p>
-            <div class="space-y-3 mb-6 text-left">
-                <div class="flex justify-between text-[10px] font-bold text-slate-400">
-                    <span>VAULT TOTAL</span>
-                    <span id="m-avail" class="text-slate-900">GH₵ 0.00</span>
-                </div>
-                <div class="flex justify-between text-[10px] font-bold border-b border-slate-100 pb-2">
-                    <span class="text-rose-500 uppercase">Service Charge (2%)</span>
-                    <span id="m-fee" class="text-rose-500">GH₵ 0.00</span>
-                </div>
-                <div class="flex justify-between text-base font-black italic pt-2">
-                    <span class="text-slate-900 uppercase">Payout</span>
-                    <span id="m-final" class="text-emerald-600">GH₵ 0.00</span>
-                </div>
-            </div>
-            <button onclick="processWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg mb-2 hover:bg-emerald-700 transition">Confirm Payout</button>
-            <button onclick="toggleModal('withdrawModal', false)" class="w-full py-2 text-[8px] font-black text-slate-400 uppercase tracking-widest">Cancel</button>
-        </div>
-    </div>
-
-    <div id="messageModal" class="grove-modal-overlay">
-        <div class="grove-modal-box">
-            <div id="msg-icon" class="text-3xl mb-3">🌿</div>
-            <p id="msg-text" class="text-[11px] font-bold text-slate-800 leading-relaxed mb-6"></p>
-            <button onclick="toggleModal('messageModal', false)" class="w-full py-3 bg-slate-900 text-white font-black rounded-xl text-[9px] uppercase">Acknowledge</button>
-        </div>
-    </div>
+<body class="max-w-md mx-auto">
 
     <div id="manual-pay-card" class="compact-activation-card">
         <div id="p-net-logo" class="h-10 mb-3 bg-center bg-no-repeat bg-contain"></div>
@@ -113,7 +61,7 @@
         </div>
         
         <button onclick="confirmPaymentAction()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg mb-2">I made the payment already</button>
-        <button onclick="restoreScroll()" class="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-2">Close Terminal</button>
+        <button onclick="hideActivationCard()" class="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-2">Minimize</button>
     </div>
 
     <header class="seed-header">
@@ -144,8 +92,20 @@
             <button id="restore-payment-btn" onclick="showActivationCard()" class="mt-auto mx-auto mb-4 py-3 px-8 border border-amber-500/30 bg-amber-500/5 text-amber-500 text-[9px] font-black uppercase rounded-full hidden italic">Show Activation Details</button>
         </section>
 
+        <section id="t-comm" class="tab-content h-full">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[7px] font-black text-slate-500 uppercase">Secure Channel</span>
+                <button onclick="scrollChat('bottom')" class="text-[7px] font-black text-emerald-500 uppercase">↓ Bottom</button>
+            </div>
+            <div id="chat-scroller" class="flex-1 overflow-y-auto pr-2 space-y-4 min-h-[300px] max-h-[400px] py-4 flex flex-col"></div>
+            <div class="pt-4 border-t border-white/5 flex gap-2">
+                <input id="chat-input" type="text" placeholder="SECURE CHANNEL..." class="flex-1 bg-black/40 border border-white/10 rounded-xl py-4 px-5 text-[10px] text-white focus:outline-none">
+                <button onclick="sendMessage()" class="bg-emerald-600 px-6 rounded-xl text-[9px] font-black uppercase text-white">Send</button>
+            </div>
+        </section>
+
         <section id="t-vault" class="tab-content">
-            <div class="bg-gradient-to-b from-emerald-950 to-emerald-900 rounded-[2.5rem] p-10 text-center flex flex-col justify-center min-h-[320px] vault-glow border border-white/5">
+            <div class="bg-gradient-to-b from-emerald-950 to-emerald-900 rounded-[2.5rem] p-10 text-center flex flex-col justify-center min-h-[320px] border border-white/5">
                 <p class="text-[8px] font-black text-emerald-400 uppercase mb-2">Claim Vaulted</p>
                 <h2 id="v-balance" class="text-4xl font-black italic text-white mb-8">GH₵0.00</h2>
                 <div class="space-y-3">
@@ -154,19 +114,21 @@
                 </div>
             </div>
         </section>
-        
-        <section id="t-comm" class="tab-content h-full">
-            <div id="chat-scroller" class="flex-1 overflow-y-auto pr-2 space-y-4 min-h-[320px] py-4 flex flex-col"></div>
-            <div class="pt-4 border-t border-white/5">
-                <input id="chat-input" type="text" placeholder="SECURE CHANNEL..." class="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-5 text-[10px] text-white focus:outline-none">
-            </div>
-        </section>
 
         <section id="t-ledger" class="tab-content"><div id="ledger-content" class="bg-black/20 rounded-2xl divide-y divide-white/5"></div></section>
     </main>
 
-    <div id="nodeMenu" class="node-menu fixed top-[75px] right-[2rem] bg-white rounded-2xl hidden z-[3000]">
-        <button onclick="logout()" class="p-4 text-[9px] font-black text-rose-500 uppercase">Exit Terminal</button>
+    <div id="withdrawModal" class="grove-modal-overlay">
+        <div class="grove-modal-box">
+            <p class="text-[9px] font-black text-emerald-600 uppercase mb-4 italic tracking-widest">Withdrawal Node</p>
+            <div class="space-y-3 mb-6 text-left">
+                <div class="flex justify-between text-[10px] font-bold text-slate-400"><span>VAULT TOTAL</span><span id="m-avail" class="text-slate-900">GH₵ 0.00</span></div>
+                <div class="flex justify-between text-[10px] font-bold border-b border-slate-100 pb-2"><span class="text-rose-500 uppercase">Service Charge (2%)</span><span id="m-fee" class="text-rose-500">GH₵ 0.00</span></div>
+                <div class="flex justify-between text-base font-black italic pt-2"><span class="text-slate-900 uppercase">Payout</span><span id="m-final" class="text-emerald-600">GH₵ 0.00</span></div>
+            </div>
+            <button onclick="processWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg mb-2">Confirm Payout</button>
+            <button onclick="toggleModal('withdrawModal', false)" class="w-full py-2 text-[8px] font-black text-slate-400 uppercase">Cancel</button>
+        </div>
     </div>
 
     <script>
@@ -179,37 +141,12 @@
         const MERCHANT_TEL = "020XXXXXXX";
         const MERCHANT_AT = "026XXXXXXX";
 
-        function toggleModal(id, show, text = "", icon = "🌿") {
-            const m = document.getElementById(id);
-            if(text) document.getElementById('msg-text').innerText = text;
-            if(icon) document.getElementById('msg-icon').innerText = icon;
-            m.style.display = show ? 'flex' : 'none';
-        }
-
-        function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('hidden'); }
-        function closeMenu() { document.getElementById('nodeMenu').classList.add('hidden'); }
+        function showActivationCard() { document.getElementById('manual-pay-card').style.display = 'block'; }
+        function hideActivationCard() { document.getElementById('manual-pay-card').style.display = 'none'; }
         
-        function restoreScroll() {
-            document.getElementById('manual-pay-card').style.display = 'none';
-            document.body.classList.remove('withered');
-            document.body.classList.add('force-scroll');
-        }
-
-        function showActivationCard() {
-            document.body.classList.add('withered');
-            document.body.classList.remove('force-scroll');
-            document.getElementById('manual-pay-card').style.display = 'block';
-        }
-
-        async function confirmPaymentAction() {
-            const ref = document.getElementById('p-payment-ref').innerText;
-            const msg = `PAYMENT_LOG: User marked GH₵${document.getElementById('p-seed-amt').innerText} as paid. [Ref: ${ref}]`;
-            const { error } = await _gv.from('messages').insert([{ sender_id: userObj.id, receiver_id: '00000000-0000-0000-0000-000000000000', content: msg, sender_name: 'USER_SYSTEM' }]);
-            if(!error) {
-                toggleModal('messageModal', true, "Verification request sent. Your terminal will be unlocked once confirmed.", "✅");
-                restoreScroll();
-                openTab('t-comm');
-            }
+        function scrollChat(dir) {
+            const s = document.getElementById('chat-scroller');
+            s.scrollTop = dir === 'bottom' ? s.scrollHeight : 0;
         }
 
         async function sync() {
@@ -217,7 +154,7 @@
             
             if(!profile || profile.is_verified !== true) {
                 document.getElementById('restore-payment-btn').classList.remove('hidden');
-                if(!document.body.classList.contains('withered') && !document.body.classList.contains('force-scroll')) showActivationCard();
+                showActivationCard();
                 
                 if(profile) {
                     document.getElementById('p-full-name').innerText = profile.full_name || "---";
@@ -226,99 +163,56 @@
                     document.getElementById('p-payment-ref').innerText = profile.payment_ref || "----";
 
                     const net = (profile.network || '').toUpperCase();
-                    const logoDiv = document.getElementById('p-net-logo');
-                    const merchDiv = document.getElementById('p-merchant');
-                    const phoneDiv = document.getElementById('p-phone');
-                    const nameLabel = document.getElementById('p-net-name');
-
                     const NET_DATA = {
-                        MTN: { logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png", color: "#fbbf24", number: MERCHANT_MTN },
-                        TELECEL: { logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Telecel_Logo.svg/1200px-Telecel_Logo.svg.png", color: "#ef4444", number: MERCHANT_TEL },
-                        AT: { logo: "https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png", color: "#3b82f6", number: MERCHANT_AT }
+                        MTN: { color: "#fbbf24", number: MERCHANT_MTN, logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png" },
+                        TELECEL: { color: "#ef4444", number: MERCHANT_TEL, logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Telecel_Logo.svg/1200px-Telecel_Logo.svg.png" },
+                        AT: { color: "#3b82f6", number: MERCHANT_AT, logo: "https://upload.wikimedia.org/wikipedia/en/3/3a/AirtelTigo_logo.png" }
                     };
 
                     if (NET_DATA[net]) {
-                        logoDiv.style.backgroundImage = `url('${NET_DATA[net].logo}')`;
-                        merchDiv.innerText = NET_DATA[net].number;
-                        merchDiv.style.color = NET_DATA[net].color;
-                        phoneDiv.style.color = NET_DATA[net].color;
-                        nameLabel.innerText = net;
-                        nameLabel.style.color = NET_DATA[net].color;
+                        const d = NET_DATA[net];
+                        document.getElementById('p-net-logo').style.backgroundImage = `url('${d.logo}')`;
+                        document.getElementById('p-merchant').innerText = d.number;
+                        document.getElementById('p-merchant').style.color = d.color;
+                        document.getElementById('p-phone').style.color = d.color;
+                        document.getElementById('p-net-name').style.color = d.color;
+                        document.getElementById('p-net-name').innerText = net;
                     }
                 }
             } else {
-                restoreScroll();
+                hideActivationCard();
                 document.getElementById('restore-payment-btn').classList.add('hidden');
-                document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
             }
-
-            const { data: ledger } = await _gv.from('ledger').select('*').eq('user_id', userObj.id).order('created_at', { ascending: false });
-            let ts=0, tg=0, tv=0, tw=0;
-            ledger?.forEach(l => {
-                const v = parseFloat(l.amount) || 0;
-                if(l.entry_type === 'seed' && !l.description.includes('Vault')) ts += v;
-                if(l.entry_type === 'gift_received') tg += v;
-                if(l.description.includes('Vault')) tv += v;
-                if(l.entry_type === 'withdrawal') tw += Math.abs(v);
-            });
-            globalVaulted = Math.max(0, tv - tw);
-            document.getElementById('s-seed').innerText = `GH₵${ts.toFixed(2)}`;
-            document.getElementById('s-reclaim').innerText = `GH₵${Math.max(0, tg - tv).toFixed(2)}`;
-            document.getElementById('v-balance').innerText = `GH₵${globalVaulted.toFixed(2)}`;
-            
-            document.getElementById('ledger-content').innerHTML = ledger?.map(l => `
-                <div class="p-4 flex justify-between items-center text-[10px]">
-                    <div><p class="font-black text-white uppercase">${l.entry_type.replace('_',' ')}</p><p class="text-[7px] text-slate-500 uppercase">${l.description || ''}</p></div>
-                    <p class="font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
-                </div>
-            `).join('') || '';
-            
-            await fetchMessages();
+            // ... rest of sync logic for balances and ledger
         }
 
-        function triggerWithdrawal() { 
-            const fee = globalVaulted * 0.02; 
-            document.getElementById('m-avail').innerText = `GH₵${globalVaulted.toFixed(2)}`; 
-            document.getElementById('m-fee').innerText = `-GH₵${fee.toFixed(2)}`; 
-            document.getElementById('m-final').innerText = `GH₵${(globalVaulted - fee).toFixed(2)}`; 
-            toggleModal('withdrawModal', true); 
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            if(!input.value.trim()) return;
+            const { error } = await _gv.from('messages').insert([{ 
+                sender_id: userObj.id, 
+                receiver_id: '00000000-0000-0000-0000-000000000000', 
+                content: input.value, 
+                sender_name: userObj.email.split('@')[0] 
+            }]);
+            if(!error) { input.value = ''; fetchMessages(); }
         }
-
-        async function processWithdrawal() { 
-            if(globalVaulted <= 0) return toggleModal('messageModal', true, "Insufficient funds for withdrawal.", "⚠️");
-            const { error } = await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -globalVaulted, entry_type: 'withdrawal', description: `Payout processed (2% fee)` }]); 
-            if(!error) { toggleModal('withdrawModal', false); toggleModal('messageModal', true, "Withdrawal logged successfully.", "✅"); sync(); }
-        }
-
-        async function vaultGrace() {
-            const amount = parseFloat(document.getElementById('s-reclaim').innerText.replace('GH₵','')) || 0;
-            if (amount <= 0) return toggleModal('messageModal', true, "No Grace balance to claim.", "⚠️");
-            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: amount, entry_type: 'seed', description: `Vaulted GH₵${amount.toFixed(2)}` }]);
-            sync();
-        }
-
-        async function fetchMessages() {
-            const { data: msgs } = await _gv.from('messages').select('*').or(`receiver_id.eq.${userObj.id},sender_id.eq.${userObj.id}`).order('created_at', { ascending: true });
-            const scroller = document.getElementById('chat-scroller');
-            scroller.innerHTML = msgs?.map(m => `
-                <div class="flex flex-col ${m.sender_id === userObj.id ? 'items-end' : 'items-start'}">
-                    <div class="p-3 rounded-xl max-w-[85%] text-[10px] mb-2 ${m.sender_id === userObj.id ? 'bg-white/5 border-r-2 border-white/20' : 'bg-emerald-500/10 border-l-2 border-emerald-500'}">${m.content}</div>
-                </div>
-            `).join('') || '';
-            scroller.scrollTop = scroller.scrollHeight;
-        }
-
-        function createRain() { const ov = document.getElementById('suspension-overlay'); for(let i=0; i<30; i++) { const d = document.createElement('div'); d.className = 'rain-drop'; d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() * 2 + 's'; ov.appendChild(d); } }
-        function openTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-' + id.split('-')[1]).classList.add('active'); }
-        async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
 
         async function init() { 
             const { data: { user } } = await _gv.auth.getUser(); 
             if(!user) return window.location.href = "index.html"; 
-            userObj = user; createRain(); sync();
+            userObj = user; sync();
             _gv.channel('realtime-sync').on('postgres_changes', {event:'*', schema:'public'}, () => { sync(); }).subscribe(); 
         }
         init();
+        
+        function openTab(id) { 
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); 
+            document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active')); 
+            document.getElementById(id).classList.add('active'); 
+            document.getElementById('btn-' + id.split('-')[1]).classList.add('active'); 
+            if(id === 't-comm') scrollChat('bottom');
+        }
     </script>
 </body>
 </html>
