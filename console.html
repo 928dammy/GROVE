@@ -22,24 +22,9 @@
         .bubble-out { background: #10b981; color: #020617; align-self: flex-end; border-radius: 1.2rem; border-bottom-right-radius: 4px; padding: 12px; max-width: 80%; font-size: 12px; font-weight: 700; }
         .view-hidden { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        /* Modal Styles */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100; display: none; justify-content: center; align-items: center; }
-        .modal-content { background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 1.5rem; padding: 2rem; width: 90%; max-width: 400px; text-align: center; }
     </style>
 </head>
 <body class="bg-slate-950">
-
-    <div id="customModal" class="modal-overlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="modalTitle" class="text-xl font-black text-white mb-2"></h3>
-            <p id="modalMessage" class="text-sm text-slate-300 mb-6"></p>
-            <div id="modalActions" class="grid grid-cols-2 gap-2">
-                <button onclick="closeModal()" class="bg-white/10 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Cancel</button>
-                <button id="modalConfirmBtn" onclick="" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Confirm</button>
-            </div>
-            <button id="modalOkBtn" onclick="closeModal()" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase hidden">Understand</button>
-        </div>
-    </div>
 
     <header class="p-4 sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-white/5">
         <div class="flex justify-between items-center mb-3">
@@ -72,18 +57,14 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-1">
-            <div class="flex flex-col items-center bg-white/5 p-2 rounded-lg border border-white/5">
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex justify-between items-center bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
                 <p class="text-[5px] font-black text-slate-500 uppercase">Total Seeded</p>
                 <p id="stat-sunk" class="text-[9px] font-black text-white">₵0.00</p>
             </div>
-            <div class="flex flex-col items-center bg-blue-500/5 p-2 rounded-lg border border-blue-500/20">
-                <p class="text-[5px] font-black text-blue-500 uppercase text-center">Pool Health</p>
+            <div class="flex justify-between items-center bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/20">
+                <p class="text-[5px] font-black text-blue-500 uppercase">Grove Pool (Health)</p>
                 <p id="stat-pool" class="text-[9px] font-black text-blue-400">₵0.00</p>
-            </div>
-            <div class="flex flex-col items-center bg-emerald-500/5 p-2 rounded-lg border border-emerald-500/20">
-                <p class="text-[5px] font-black text-emerald-500 uppercase text-center">Service Charge</p>
-                <p id="stat-service" class="text-[9px] font-black text-emerald-400">₵0.00</p>
             </div>
         </div>
     </header>
@@ -141,14 +122,25 @@
                         <button onclick="injectSystemFunds()" class="bg-blue-600 px-6 rounded-xl font-black text-[9px]">INJECT</button>
                     </div>
                 </div>
+
                 <div class="auth-card p-5 border-l-4 border-emerald-500">
-                    <p class="text-[9px] font-black uppercase text-emerald-500 mb-3">Grace Distribution</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="graceAmt" placeholder="Amount ₵" class="input-box col-span-2">
-                        <button onclick="distributeGrace('stable')" class="py-3 bg-emerald-600 rounded-xl font-black text-[8px] uppercase">Stable Grace</button>
-                        <button onclick="distributeGrace('wither')" class="py-3 bg-rose-600 rounded-xl font-black text-[8px] uppercase">Wither Grace</button>
+                    <p class="text-[9px] font-black uppercase text-emerald-500 mb-1">Stable Grace</p>
+                    <p class="text-[6px] text-slate-500 uppercase mb-3">Instant Pool Deduction / Fixed Amount</p>
+                    <div class="flex gap-2">
+                        <input type="number" id="stableAmt" placeholder="₵ Amount" class="input-box flex-1">
+                        <button onclick="distributeGrace('stable')" class="bg-emerald-600 px-6 rounded-xl font-black text-[9px]">RELEASE</button>
                     </div>
                 </div>
+
+                <div class="auth-card p-5 border-l-4 border-amber-500">
+                    <p class="text-[9px] font-black uppercase text-amber-500 mb-1">Withers Grace</p>
+                    <p class="text-[6px] text-slate-500 uppercase mb-3">Deduct from pool ONLY on claim</p>
+                    <div class="flex gap-2">
+                        <input type="number" id="withersPct" placeholder="Pool %" class="input-box flex-1">
+                        <button onclick="distributeGrace('withers')" class="bg-amber-600 px-6 rounded-xl font-black text-[9px]">WITHER</button>
+                    </div>
+                </div>
+
                 <div class="auth-card p-5 border-l-4 border-rose-500">
                     <p class="text-[9px] font-black uppercase text-rose-500 mb-3">Emergency System Purge</p>
                     <button onclick="purgeSystem()" class="w-full py-3 bg-rose-600/20 text-rose-500 border border-rose-500/30 rounded-xl font-black text-[9px]">WIPE ALL TRANSACTION LOGS</button>
@@ -157,31 +149,12 @@
         </section>
 
         <section id="payouts" class="tab-content">
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <p class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Withdrawal Queue</p>
-                    <button onclick="withdrawAllFees()" class="bg-emerald-500 text-black px-3 py-1.5 rounded-full text-[7px] font-black uppercase">Withdraw All Fees</button>
-                </div>
-                <div id="payoutList" class="space-y-3"></div>
-            </div>
-
-            <div class="border-t border-white/10 pt-6">
-                <p class="text-[9px] font-black uppercase text-emerald-500 mb-4 tracking-widest">Service Charge History</p>
-                <div id="serviceChargeHistory" class="bg-white/5 rounded-2xl overflow-hidden text-[8px]">
-                    </div>
-            </div>
+            <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Withdrawal Queue (-2% SERVICE FEE)</p>
+            <div id="payoutList" class="space-y-3"></div>
         </section>
 
         <section id="ledger" class="tab-content">
-            <div class="flex justify-between items-center mb-4">
-                <p class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Audit Proof Ledger</p>
-                <select id="ledgerFilter" onchange="sync()" class="bg-white/5 text-[8px] rounded-full px-2 py-1 border border-white/10">
-                    <option value="all">All</option>
-                    <option value="seed">Seeding</option>
-                    <option value="withdrawal">Withdrawals</option>
-                    <option value="grace">Grace</option>
-                </select>
-            </div>
+            <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Global Transaction Log</p>
             <div id="ledgerTable" class="bg-white/5 rounded-2xl overflow-hidden"></div>
         </section>
     </main>
@@ -197,34 +170,10 @@
 
     <script>
         const SB_URL = "https://efiacszdzogknbucfgeu.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImVub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000";
         let allNodes=[], allMsgs=[], currentChatId=null;
-
-        // --- Custom Modal Functionality ---
-        function showModal(title, message, confirmAction = null) {
-            document.getElementById('modalTitle').innerText = title;
-            document.getElementById('modalMessage').innerText = message;
-            document.getElementById('customModal').style.display = 'flex';
-            
-            if (confirmAction) {
-                document.getElementById('modalActions').classList.remove('hidden');
-                document.getElementById('modalOkBtn').classList.add('hidden');
-                // Assign action directly to confirm button
-                document.getElementById('modalConfirmBtn').onclick = async () => {
-                    await confirmAction();
-                    closeModal();
-                };
-            } else {
-                document.getElementById('modalActions').classList.add('hidden');
-                document.getElementById('modalOkBtn').classList.remove('hidden');
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('customModal').style.display = 'none';
-        }
 
         async function sync() {
             const { data: profiles } = await _gv.from('profiles').select('*');
@@ -232,28 +181,18 @@
             const { data: messages } = await _gv.from('messages').select('*');
             
             allNodes = profiles || []; 
-            allMsgs = messages || []; 
+            allMsgs = messages || [];
 
             let totalSeeded = 0;
             let currentPool = 0;
-            let totalServiceCharge = 0;
 
             ledger?.forEach(l => {
                 if(l.entry_type === 'seed') totalSeeded += Math.abs(l.amount);
-                
-                if(l.entry_type === 'service_charge') {
-                    totalServiceCharge += Math.abs(l.amount);
-                } else if (l.entry_type === 'admin_withdraw') {
-                    // Do nothing for withdrawn admin fees in pool calc
-                } else {
-                    currentPool += l.amount;
-                }
+                currentPool += l.amount;
             });
 
             document.getElementById('stat-sunk').innerText = `₵${totalSeeded.toFixed(2)}`;
             document.getElementById('stat-pool').innerText = `₵${currentPool.toFixed(2)}`;
-            document.getElementById('stat-service').innerText = `₵${totalServiceCharge.toFixed(2)}`;
-
             document.getElementById('total-nodes-count').innerText = allNodes.length;
             document.getElementById('active-nodes-count').innerText = allNodes.filter(n=>n.is_verified).length;
             document.getElementById('pending-nodes-count').innerText = allNodes.filter(n=>!n.is_verified).length;
@@ -288,144 +227,87 @@
                 </div>`;
             }).join('');
 
-            // PAYOUT QUEUE RENDERING
             const pendingPayouts = ledger?.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID')) || [];
             document.getElementById('payoutList').innerHTML = pendingPayouts.map(w => {
                 const node = allNodes.find(n => n.id === w.user_id);
                 const charge = Math.abs(w.amount) * 0.02;
                 const net = Math.abs(w.amount) - charge;
-                return `<div class="auth-card p-4 flex justify-between items-center border-l-2 border-amber-500">
+                return `<div class="auth-card p-4 flex justify-between items-center">
                     <div>
-                        <p class="text-[9px] font-black uppercase text-white">${node?.full_name || 'UNKNOWN NODE'}</p>
-                        <p class="text-[7px] text-slate-400 font-bold">${node?.email}</p>
-                        <p class="text-[8px] text-emerald-500 font-black mt-1">PAYOUT: ₵${net.toFixed(2)} <span class="text-slate-500 text-[6px]">(₵${charge.toFixed(2)} FEE)</span></p>
+                        <p class="text-[9px] font-black uppercase text-white">${node?.full_name || 'NODE'}</p>
+                        <p class="text-[7px] text-emerald-500 font-black">₵${net.toFixed(2)} NET (-2%)</p>
                     </div>
-                    <button onclick="approvePayout('${w.id}','${w.user_id}',${Math.abs(w.amount)})" class="bg-emerald-600 text-black px-4 py-2 rounded-lg text-[8px] font-black uppercase">Approve</button>
+                    <button onclick="approvePayout('${w.id}','${w.user_id}',${Math.abs(w.amount)})" class="bg-emerald-600 px-4 py-2 rounded-lg text-[8px] font-black">APPROVE</button>
                 </div>`;
-            }).join('') || '<p class="text-center py-5 text-[8px] opacity-30 font-black uppercase">No pending withdrawals</p>';
+            }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">Queue Empty</p>';
 
-            // SERVICE CHARGE HISTORY RENDERING
-            const serviceCharges = ledger?.filter(l => l.entry_type === 'service_charge' || l.entry_type === 'admin_withdraw') || [];
-            document.getElementById('serviceChargeHistory').innerHTML = serviceCharges.map(sc => `
+            document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 30).map(l => `
                 <div class="flex justify-between items-center p-3 border-b border-white/5">
                     <div>
-                        <p class="font-black ${sc.entry_type === 'admin_withdraw' ? 'text-rose-400' : 'text-white'} uppercase text-[7px]">${sc.description}</p>
-                        <p class="text-[5px] text-slate-500">${new Date(sc.created_at).toLocaleString()}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-200">${l.description}</p>
+                        <p class="text-[5px] text-slate-500">${new Date(l.created_at).toLocaleString()}</p>
                     </div>
-                    <p class="font-black ${sc.entry_type === 'admin_withdraw' ? 'text-rose-400' : 'text-emerald-400'}">${sc.entry_type === 'admin_withdraw' ? '' : '+'}${sc.amount.toFixed(2)}</p>
+                    <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
                 </div>
-            `).join('') || '<p class="p-4 text-center opacity-30">No charges collected yet</p>';
-
-            // LEDGER RENDERING WITH FILTER AND TRACE
-            const filter = document.getElementById('ledgerFilter').value;
-            let filteredLedger = ledger;
-            if(filter !== 'all') {
-                filteredLedger = ledger.filter(l => l.entry_type === filter || (filter === 'grace' && l.description.includes('GRACE')));
-            }
-            
-            document.getElementById('ledgerTable').innerHTML = filteredLedger?.slice(0, 50).map(l => {
-                const node = allNodes.find(n => n.id === l.user_id);
-                return `
-                <div class="p-3 border-b border-white/5">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-[8px] font-black uppercase text-slate-200">${l.description}</p>
-                            <p class="text-[6px] text-slate-500 font-bold">${node ? node.email : 'System/Admin'}</p>
-                        </div>
-                        <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
-                    </div>
-                    <p class="text-[5px] text-slate-600 mt-1">${new Date(l.created_at).toLocaleString()} | ID: ${l.id.slice(0,6)}</p>
-                </div>`;
-            }).join('');
+            `).join('');
 
             renderInbox(); 
             updateNavBadge();
         }
 
-        // --- Core Functions ---
-
-        async function approvePayout(ledgerId, userId, fullAmount) {
-            const charge = fullAmount * 0.02;
-            const net = fullAmount - charge;
-            const node = allNodes.find(n => n.id === userId);
+        async function distributeGrace(type) {
+            const verifiedNodes = allNodes.filter(n => n.is_verified);
+            if (verifiedNodes.length === 0) return alert("No verified nodes.");
             
-            showModal("Process Payout", `User Receives: ₵${net.toFixed(2)}\nService Charge: ₵${charge.toFixed(2)}`, async () => {
-                // 1. Update the original withdrawal to "PAID"
-                await _gv.from('ledger').update({ 
-                    description: `CLAIM PAID | NET: ₵${net.toFixed(2)} | FEE: ₵${charge.toFixed(2)}` 
-                }).eq('id', ledgerId);
+            const inserts = [];
+            let amt = 0;
 
-                // 2. Automatically log the 2% into your Service Charge vault
-                await _gv.from('ledger').insert([{ 
-                    user_id: SYSTEM_ADMIN_ID, 
-                    amount: charge, 
-                    entry_type: 'service_charge', 
-                    description: `FEE FROM: ${node?.full_name || userId.slice(0,8)}` 
-                }]);
+            if (type === 'stable') {
+                amt = parseFloat(document.getElementById('stableAmt').value);
+                if (!amt || amt <= 0) return alert("Enter valid amount");
+                if (!confirm(`Deduct ₵${(amt * verifiedNodes.length).toFixed(2)} from pool now?`)) return;
 
-                sync();
-                showModal("Success", "Payout Processed");
-            });
-        }
+                verifiedNodes.forEach(n => {
+                    // Immediate Pool Deduction
+                    inserts.push({ user_id: SYSTEM_ADMIN_ID, amount: -amt, entry_type: 'distribution', description: `STABLE GRACE OUTFLOW` });
+                    // User Vault
+                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: STABLE GRACE` });
+                });
+            } else {
+                const pct = parseFloat(document.getElementById('withersPct').value);
+                if (!pct || pct <= 0) return alert("Enter valid percentage");
+                
+                const currentPool = parseFloat(document.getElementById('stat-pool').innerText.replace('₵',''));
+                amt = (currentPool * (pct/100)) / verifiedNodes.length;
+                if (!confirm(`Distribute ₵${amt.toFixed(2)} per node? No pool deduction until claim.`)) return;
 
-        async function withdrawAllFees() {
-            const currentFees = parseFloat(document.getElementById('stat-service').innerText.replace('₵',''));
-            
-            if(currentFees <= 0) {
-                showModal("Info", "No fees to withdraw.");
-                return;
+                verifiedNodes.forEach(n => {
+                    // User Vault Only (No Pool Deduction Entry)
+                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: WITHERS GRACE` });
+                });
             }
 
-            showModal("Withdraw Fees", `Withdraw ₵${currentFees.toFixed(2)} in accumulated fees?`, async () => {
-                // Insert a negative entry representing the withdrawal of funds
-                await _gv.from('ledger').insert([{
-                    user_id: SYSTEM_ADMIN_ID,
-                    amount: -currentFees,
-                    entry_type: 'admin_withdraw',
-                    description: `ADMIN WITHDRAWAL: Accumulated Fees`
-                }]);
-                
-                showModal("Success", `₵${currentFees.toFixed(2)} withdrawn.`);
-                sync();
-            });
-        }
-
-        async function distributeGrace(type) {
-            const amt = parseFloat(document.getElementById('graceAmt').value);
-            if(!amt || amt <= 0) { showModal("Error", "Enter valid amount"); return; }
-            
-            const desc = type === 'stable' ? 'STABLE GRACE' : 'WITHER GRACE';
-            const totalAmount = amt * allNodes.length;
-            
-            showModal("Distribute Grace", `Distribute ${desc} (₵${amt.toFixed(2)}) to ALL ${allNodes.length} nodes?\nTotal Pool Impact: ₵${totalAmount.toFixed(2)}`, async () => {
-                // Log the master distribution
-                await _gv.from('ledger').insert([{
-                    user_id: SYSTEM_ADMIN_ID,
-                    amount: -totalAmount,
-                    entry_type: 'grace',
-                    description: `${desc} DISTRIBUTION | Amount: ₵${amt.toFixed(2)}`
-                }]);
-                
-                showModal("Success", `${desc} Distribution Logged.`);
-                document.getElementById('graceAmt').value = '';
-                sync();
-            });
+            const { error } = await _gv.from('ledger').insert(inserts);
+            if(!error) { 
+                alert("DISTRIBUTION INITIALIZED"); 
+                document.getElementById('stableAmt').value = '';
+                document.getElementById('withersPct').value = '';
+                sync(); 
+            }
         }
 
         async function deleteNode(id) {
-            showModal("Terminate Node", "PERMANENTLY TERMINATE THIS NODE? This cannot be undone.", async () => {
+            if(confirm("PERMANENTLY TERMINATE THIS NODE? This cannot be undone.")) {
                 await _gv.from('profiles').delete().eq('id', id);
                 sync();
-                showModal("Alert", "Node Terminated");
-            });
+            }
         }
 
         async function purgeSystem() {
-            showModal("Purge System", "DANGER: WIPE ALL TRANSACTION LOGS? This clears the Global Ledger but keeps profiles.", async () => {
+            if(confirm("DANGER: WIPE ALL TRANSACTION LOGS? This clears the Global Ledger but keeps profiles.")) {
                 await _gv.from('ledger').delete().neq('id', '00000000-0000-0000-0000-000000000000');
                 sync();
-                showModal("System", "Ledger Wiped");
-            });
+            }
         }
 
         async function injectSystemFunds() {
@@ -434,7 +316,15 @@
             await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: amt, entry_type: 'sli', description: `SYSTEM LIQUIDITY INJECTION (SLI)` }]);
             document.getElementById('injectAmt').value = '';
             sync();
-            showModal("Success", "Funds Injected");
+        }
+
+        async function approvePayout(ledgerId, userId, fullAmount) {
+            const charge = fullAmount * 0.02;
+            if(confirm(`Approve payout? Net will be sent, 2% (₵${charge.toFixed(2)}) stays in Pool.`)) {
+                await _gv.from('ledger').update({ description: 'CLAIM PAID & COMPLETED' }).eq('id', ledgerId);
+                await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: charge, entry_type: 'service_charge', description: `SERVICE CHARGE FROM WITHDRAWAL` }]);
+                sync();
+            }
         }
 
         async function verifyNodeManual() {
@@ -443,13 +333,8 @@
             if(data) {
                 await _gv.from('profiles').update({ is_verified: true }).eq('id', data.id);
                 sync();
-                showModal("Success", "Node Verified");
-            } else {
-                showModal("Error", "Node not found");
             }
         }
-
-        // --- Chat Functions ---
 
         async function openUserChat(id) {
             currentChatId = id; 
@@ -476,9 +361,6 @@
 
         function closeChat() { currentChatId = null; document.getElementById('chatView').classList.add('view-hidden'); document.getElementById('inboxView').classList.remove('view-hidden'); }
         async function nodeOp(id, type) { await _gv.from('profiles').update({ is_verified: type === 'verify' }).eq('id', id); sync(); }
-        
-        // --- Navigation ---
-        
         function openTab(e, n) { 
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); 
             document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active')); 
@@ -506,24 +388,10 @@
         async function logout() { await _gv.auth.signOut(); location.href = 'consoleenter.html'; }
 
         async function init() {
-            // FIX: Listen for auth state changes to handle loading sessions properly
-            _gv.auth.onAuthStateChange((event, session) => {
-                if (event === 'SIGNED_OUT' || !session) {
-                    location.href = 'consoleenter.html';
-                }
-            });
-
-            // Initial check
             const { data: { user } } = await _gv.auth.getUser();
-            if(!user) {
-                location.href = 'consoleenter.html';
-                return;
-            }
-            
+            if(!user) location.href = 'consoleenter.html';
             document.getElementById('admin-session-email').innerText = `Session: ${user.email}`;
             sync();
-            
-            // Realtime subscriptions
             _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
         }
         init();
