@@ -22,9 +22,20 @@
         .bubble-out { background: #10b981; color: #020617; align-self: flex-end; border-radius: 1.2rem; border-bottom-right-radius: 4px; padding: 12px; max-width: 80%; font-size: 12px; font-weight: 700; }
         .view-hidden { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 1.5rem; padding: 2rem; width: 90%; max-width: 400px; text-align: center; }
     </style>
 </head>
 <body class="bg-slate-950">
+
+    <div id="customModal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="modalTitle" class="text-xl font-black text-white mb-2"></h3>
+            <p id="modalMessage" class="text-sm text-slate-300 mb-6"></p>
+            <button onclick="closeModal()" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Understand</button>
+        </div>
+    </div>
 
     <header class="p-4 sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-white/5">
         <div class="flex justify-between items-center mb-3">
@@ -129,9 +140,9 @@
                 <div class="auth-card p-5 border-l-4 border-emerald-500">
                     <p class="text-[9px] font-black uppercase text-emerald-500 mb-3">Grace Distribution</p>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="stableGraceAmt" placeholder="Stable ₵" class="input-box col-span-2">
-                        <button onclick="distributeGrace('stable')" class="py-3 bg-emerald-600 rounded-xl font-black text-[8px] uppercase">Distribute Stable</button>
-                        <button onclick="distributeGrace('wither')" class="py-3 bg-rose-600 rounded-xl font-black text-[8px] uppercase">Distribute Wither</button>
+                        <input type="number" id="graceAmt" placeholder="Amount ₵" class="input-box col-span-2">
+                        <button onclick="distributeGrace('stable')" class="py-3 bg-emerald-600 rounded-xl font-black text-[8px] uppercase">Stable Grace</button>
+                        <button onclick="distributeGrace('wither')" class="py-3 bg-rose-600 rounded-xl font-black text-[8px] uppercase">Wither Grace</button>
                     </div>
                 </div>
                 <div class="auth-card p-5 border-l-4 border-rose-500">
@@ -186,6 +197,16 @@
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000";
         let allNodes=[], allMsgs=[], currentChatId=null;
+
+        function showModal(title, message) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+            document.getElementById('customModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('customModal').style.display = 'none';
+        }
 
         async function sync() {
             const { data: profiles } = await _gv.from('profiles').select('*');
@@ -277,22 +298,27 @@
                 </div>
             `).join('') || '<p class="p-4 text-center opacity-30">No charges collected yet</p>';
 
-            // LEDGER RENDERING WITH FILTER
+            // LEDGER RENDERING WITH FILTER AND TRACE
             const filter = document.getElementById('ledgerFilter').value;
             let filteredLedger = ledger;
             if(filter !== 'all') {
                 filteredLedger = ledger.filter(l => l.entry_type === filter || (filter === 'grace' && l.description.includes('GRACE')));
             }
             
-            document.getElementById('ledgerTable').innerHTML = filteredLedger?.slice(0, 50).map(l => `
-                <div class="flex justify-between items-center p-3 border-b border-white/5">
-                    <div>
-                        <p class="text-[8px] font-black uppercase text-slate-200">${l.description}</p>
-                        <p class="text-[5px] text-slate-500">${new Date(l.created_at).toLocaleString()}</p>
+            document.getElementById('ledgerTable').innerHTML = filteredLedger?.slice(0, 50).map(l => {
+                const node = allNodes.find(n => n.id === l.user_id);
+                return `
+                <div class="p-3 border-b border-white/5">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-[8px] font-black uppercase text-slate-200">${l.description}</p>
+                            <p class="text-[6px] text-slate-500 font-bold">${node ? node.email : 'System/Admin'}</p>
+                        </div>
+                        <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
                     </div>
-                    <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
-                </div>
-            `).join('');
+                    <p class="text-[5px] text-slate-600 mt-1">${new Date(l.created_at).toLocaleString()} | ID: ${l.id.slice(0,6)}</p>
+                </div>`;
+            }).join('');
 
             renderInbox(); 
             updateNavBadge();
@@ -320,6 +346,7 @@
                 }]);
 
                 sync();
+                showModal("Success", "Payout Processed");
             }
         }
 
@@ -327,7 +354,7 @@
             const currentFees = parseFloat(document.getElementById('stat-service').innerText.replace('₵',''));
             
             if(currentFees <= 0) {
-                alert("No fees to withdraw.");
+                showModal("Info", "No fees to withdraw.");
                 return;
             }
 
@@ -340,33 +367,30 @@
                     description: `ADMIN WITHDRAWAL: Accumulated Fees`
                 }]);
                 
-                alert(`₵${currentFees.toFixed(2)} withdrawn to external wallet.`);
+                showModal("Success", `₵${currentFees.toFixed(2)} withdrawn.`);
                 sync();
             }
         }
 
         async function distributeGrace(type) {
-            const amt = parseFloat(document.getElementById('stableGraceAmt').value);
-            if(!amt || amt <= 0) { alert("Enter valid amount"); return; }
+            const amt = parseFloat(document.getElementById('graceAmt').value);
+            if(!amt || amt <= 0) { showModal("Error", "Enter valid amount"); return; }
             
-            const desc = type === 'stable' ? 'STABLE GRACE DISTRIBUTION' : 'WITHER GRACE DISTRIBUTION';
+            const desc = type === 'stable' ? 'STABLE GRACE' : 'WITHER GRACE';
             const totalAmount = amt * allNodes.length;
             
-            if(confirm(`Distribute ₵${amt.toFixed(2)} to ALL ${allNodes.length} nodes?\nTotal Pool Impact: ₵${totalAmount.toFixed(2)}`)) {
+            if(confirm(`Distribute ${desc} (₵${amt.toFixed(2)}) to ALL ${allNodes.length} nodes?\nTotal Pool Impact: ₵${totalAmount.toFixed(2)}`)) {
                 
-                // 1. Create a master ledger entry for the distribution
+                // Log the master distribution
                 await _gv.from('ledger').insert([{
                     user_id: SYSTEM_ADMIN_ID,
                     amount: -totalAmount,
                     entry_type: 'grace',
-                    description: `${desc} | Per Node: ₵${amt.toFixed(2)}`
+                    description: `${desc} DISTRIBUTION | Amount: ₵${amt.toFixed(2)}`
                 }]);
-
-                // 2. Add the amount directly to each node's vault (Requires a function in Supabase or individual updates)
-                // For this implementation, we will log the master distribution and update the UI accordingly.
                 
-                alert("Distribution logged.");
-                document.getElementById('stableGraceAmt').value = '';
+                showModal("Success", `${desc} Distribution Logged.`);
+                document.getElementById('graceAmt').value = '';
                 sync();
             }
         }
@@ -375,6 +399,7 @@
             if(confirm("PERMANENTLY TERMINATE THIS NODE? This cannot be undone.")) {
                 await _gv.from('profiles').delete().eq('id', id);
                 sync();
+                showModal("Alert", "Node Terminated");
             }
         }
 
@@ -382,6 +407,7 @@
             if(confirm("DANGER: WIPE ALL TRANSACTION LOGS? This clears the Global Ledger but keeps profiles.")) {
                 await _gv.from('ledger').delete().neq('id', '00000000-0000-0000-0000-000000000000');
                 sync();
+                showModal("System", "Ledger Wiped");
             }
         }
 
@@ -391,6 +417,7 @@
             await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: amt, entry_type: 'sli', description: `SYSTEM LIQUIDITY INJECTION (SLI)` }]);
             document.getElementById('injectAmt').value = '';
             sync();
+            showModal("Success", "Funds Injected");
         }
 
         async function verifyNodeManual() {
@@ -399,6 +426,9 @@
             if(data) {
                 await _gv.from('profiles').update({ is_verified: true }).eq('id', data.id);
                 sync();
+                showModal("Success", "Node Verified");
+            } else {
+                showModal("Error", "Node not found");
             }
         }
 
