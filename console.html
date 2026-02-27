@@ -33,7 +33,11 @@
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 id="modalTitle" class="text-xl font-black text-white mb-2"></h3>
             <p id="modalMessage" class="text-sm text-slate-300 mb-6"></p>
-            <button onclick="closeModal()" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Understand</button>
+            <div id="modalActions" class="grid grid-cols-2 gap-2">
+                <button onclick="closeModal()" class="bg-white/10 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Cancel</button>
+                <button id="modalConfirmBtn" onclick="" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Confirm</button>
+            </div>
+            <button id="modalOkBtn" onclick="closeModal()" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase hidden">Understand</button>
         </div>
     </div>
 
@@ -48,7 +52,7 @@
                 <button onclick="logout()" class="text-[7px] font-black text-rose-500 uppercase bg-rose-500/10 px-3 py-1.5 rounded-full border border-rose-500/20">Logout</button>
             </div>
         </div>
-
+        
         <div class="grid grid-cols-4 gap-1 bg-white/5 p-2 rounded-xl border border-white/5 mb-2">
             <div class="text-center">
                 <p id="total-nodes-count" class="text-[10px] font-black text-white leading-none">0</p>
@@ -160,7 +164,7 @@
                 </div>
                 <div id="payoutList" class="space-y-3"></div>
             </div>
-
+            
             <div class="border-t border-white/10 pt-6">
                 <p class="text-[9px] font-black uppercase text-emerald-500 mb-4 tracking-widest">Service Charge History</p>
                 <div id="serviceChargeHistory" class="bg-white/5 rounded-2xl overflow-hidden text-[8px]">
@@ -181,7 +185,7 @@
             <div id="ledgerTable" class="bg-white/5 rounded-2xl overflow-hidden"></div>
         </section>
     </main>
-
+    
     <nav class="fixed bottom-0 left-0 right-0 h-16 bg-slate-950 border-t border-white/10 flex items-center z-50 px-1">
         <div class="nav-link active" onclick="openTab(event, 'nodes')"><span class="text-sm">👥</span><p class="text-[5px] font-black uppercase mt-1">Nodes</p></div>
         <div class="nav-link" onclick="openTab(event, 'messages')"><div id="navMsgBadge" class="nav-badge view-hidden">0</div><span class="text-sm">💬</span><p class="text-[5px] font-black uppercase mt-1">Chat</p></div>
@@ -190,18 +194,28 @@
         <div class="nav-link" onclick="openTab(event, 'payouts')"><span class="text-sm">💰</span><p class="text-[5px] font-black uppercase mt-1">Payout</p></div>
         <div class="nav-link" onclick="openTab(event, 'ledger')"><span class="text-sm">📜</span><p class="text-[5px] font-black uppercase mt-1">Ledger</p></div>
     </nav>
-
+    
     <script>
         const SB_URL = "https://efiacszdzogknbucfgeu.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
+        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImVub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000";
         let allNodes=[], allMsgs=[], currentChatId=null;
 
-        function showModal(title, message) {
+        // --- Custom Modal Functionality ---
+        function showModal(title, message, confirmAction = null) {
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalMessage').innerText = message;
             document.getElementById('customModal').style.display = 'flex';
+            
+            if (confirmAction) {
+                document.getElementById('modalActions').classList.remove('hidden');
+                document.getElementById('modalOkBtn').classList.add('hidden');
+                document.getElementById('modalConfirmBtn').setAttribute('onclick', confirmAction + '; closeModal();');
+            } else {
+                document.getElementById('modalActions').classList.add('hidden');
+                document.getElementById('modalOkBtn').classList.remove('hidden');
+            }
         }
 
         function closeModal() {
@@ -331,7 +345,7 @@
             const net = fullAmount - charge;
             const node = allNodes.find(n => n.id === userId);
             
-            if(confirm(`PROCESS PAYOUT?\n\nUser Receives: ₵${net.toFixed(2)}\nService Charge: ₵${charge.toFixed(2)}`)) {
+            showModal("Process Payout", `User Receives: ₵${net.toFixed(2)}\nService Charge: ₵${charge.toFixed(2)}`, async () => {
                 // 1. Update the original withdrawal to "PAID"
                 await _gv.from('ledger').update({ 
                     description: `CLAIM PAID | NET: ₵${net.toFixed(2)} | FEE: ₵${charge.toFixed(2)}` 
@@ -347,7 +361,7 @@
 
                 sync();
                 showModal("Success", "Payout Processed");
-            }
+            });
         }
 
         async function withdrawAllFees() {
@@ -358,7 +372,7 @@
                 return;
             }
 
-            if(confirm(`Withdraw ₵${currentFees.toFixed(2)} in accumulated fees?`)) {
+            showModal("Withdraw Fees", `Withdraw ₵${currentFees.toFixed(2)} in accumulated fees?`, async () => {
                 // Insert a negative entry representing the withdrawal of funds
                 await _gv.from('ledger').insert([{
                     user_id: SYSTEM_ADMIN_ID,
@@ -369,7 +383,7 @@
                 
                 showModal("Success", `₵${currentFees.toFixed(2)} withdrawn.`);
                 sync();
-            }
+            });
         }
 
         async function distributeGrace(type) {
@@ -379,8 +393,7 @@
             const desc = type === 'stable' ? 'STABLE GRACE' : 'WITHER GRACE';
             const totalAmount = amt * allNodes.length;
             
-            if(confirm(`Distribute ${desc} (₵${amt.toFixed(2)}) to ALL ${allNodes.length} nodes?\nTotal Pool Impact: ₵${totalAmount.toFixed(2)}`)) {
-                
+            showModal("Distribute Grace", `Distribute ${desc} (₵${amt.toFixed(2)}) to ALL ${allNodes.length} nodes?\nTotal Pool Impact: ₵${totalAmount.toFixed(2)}`, async () => {
                 // Log the master distribution
                 await _gv.from('ledger').insert([{
                     user_id: SYSTEM_ADMIN_ID,
@@ -392,23 +405,23 @@
                 showModal("Success", `${desc} Distribution Logged.`);
                 document.getElementById('graceAmt').value = '';
                 sync();
-            }
+            });
         }
 
         async function deleteNode(id) {
-            if(confirm("PERMANENTLY TERMINATE THIS NODE? This cannot be undone.")) {
+            showModal("Terminate Node", "PERMANENTLY TERMINATE THIS NODE? This cannot be undone.", async () => {
                 await _gv.from('profiles').delete().eq('id', id);
                 sync();
                 showModal("Alert", "Node Terminated");
-            }
+            });
         }
 
         async function purgeSystem() {
-            if(confirm("DANGER: WIPE ALL TRANSACTION LOGS? This clears the Global Ledger but keeps profiles.")) {
+            showModal("Purge System", "DANGER: WIPE ALL TRANSACTION LOGS? This clears the Global Ledger but keeps profiles.", async () => {
                 await _gv.from('ledger').delete().neq('id', '00000000-0000-0000-0000-000000000000');
                 sync();
                 showModal("System", "Ledger Wiped");
-            }
+            });
         }
 
         async function injectSystemFunds() {
