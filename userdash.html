@@ -70,11 +70,6 @@
         .carousel-container { position: relative; width: 100%; overflow: hidden; border-radius: 1rem; }
         .carousel-track { display: flex; transition: transform 0.5s ease-in-out; }
         .carousel-slide { min-width: 100%; box-sizing: border-box; padding: 1rem; }
-        
-        /* Indicators */
-        .carousel-indicators { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
-        .indicator { width: 8px; height: 8px; background-color: rgba(255,255,255,0.3); border-radius: 50%; transition: background-color 0.3s; cursor: pointer; }
-        .indicator.active { background-color: white; }
     </style>
 </head>
 <body class="max-w-md mx-auto" onclick="closeMenu()">
@@ -135,7 +130,6 @@
             <div id="missionCarousel" class="carousel-container mb-4">
                 <div id="missionTrack" class="carousel-track">
                     </div>
-                <div id="carouselIndicators" class="carousel-indicators"></div>
             </div>
             
             <div id="capture-zone" class="space-y-2 mb-6 overflow-y-auto max-h-[300px] no-scrollbar"></div>
@@ -191,7 +185,7 @@
         const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
         const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
-        let userObj = null, globalVaulted = 0, carouselInterval = null;
+        let userObj = null, globalVaulted = 0;
 
         function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
         function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
@@ -201,9 +195,6 @@
         function showActivationCard() { document.body.classList.add('withered'); document.body.classList.remove('force-scroll'); document.getElementById('manual-pay-card').style.display = 'block'; }
 
         async function sync() {
-            if(!userObj) return;
-            console.log("Syncing data for:", userObj.email);
-            
             const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
             if(!profile || profile.is_verified !== true || profile.is_suspended) {
                 document.getElementById('restore-payment-btn').classList.remove('hidden');
@@ -223,13 +214,10 @@
                 document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
             }
 
-            // MISSION SYNC
-            const { data: missions, error: mErr } = await _gv.from('missions').select('*').eq('active', true).order('created_at', { ascending: false });
-            if(mErr) console.error("Missions Error:", mErr);
+            // MISSION SYNC - Fetch active missions with images
+            const { data: missions } = await _gv.from('missions').select('*').eq('active', true).order('created_at', { ascending: false });
             
             const track = document.getElementById('missionTrack');
-            const indicators = document.getElementById('carouselIndicators');
-            
             if (missions && missions.length > 0) {
                 track.innerHTML = missions.map(m => `
                     <div class="carousel-slide bg-white/5 rounded-2xl border border-white/10">
@@ -239,18 +227,13 @@
                         <p class="text-[10px] text-amber-400 font-bold">Goal: GH₵${m.goal.toFixed(2)}</p>
                     </div>
                 `).join('');
-                
-                indicators.innerHTML = missions.map((_, i) => `<div class="indicator ${i === 0 ? 'active' : ''}"></div>`).join('');
-                startCarousel(missions.length);
+                startCarousel();
             } else {
                 track.innerHTML = `<div class="carousel-slide text-center text-slate-500 py-10">Awaiting Grace...</div>`;
-                indicators.innerHTML = '';
             }
 
-            // LEDGER SYNC
-            const { data: ledger, error: lErr } = await _gv.from('ledger').select('*, profiles(email)').eq('user_id', userObj.id).order('created_at', { ascending: false });
-            if(lErr) console.error("Ledger Error:", lErr);
-            console.log("Ledger Data:", ledger);
+            // LEDGER SYNC - Include participant info
+            const { data: ledger } = await _gv.from('ledger').select('*, profiles(email)').eq('user_id', userObj.id).order('created_at', { ascending: false });
             
             let seedTotal = 0, graceBalance = 0, vaultTotal = 0, withdrawn = 0;
             let captureHTML = "";
@@ -281,6 +264,7 @@
             document.getElementById('v-balance').innerText = `GH₵${globalVaulted.toFixed(2)}`;
             document.getElementById('capture-zone').innerHTML = captureHTML;
             
+            // Render Ledger with participant detail
             document.getElementById('ledger-content').innerHTML = ledger?.map(l => {
                 const participant = l.profiles ? l.profiles.email : 'SYSTEM';
                 return `
@@ -296,59 +280,18 @@
             fetchMessages();
         }
 
-        function startCarousel(slideCount) {
-            if (carouselInterval) clearInterval(carouselInterval);
-            if (slideCount <= 1) return;
-
+        // Simple Carousel Logic
+        function startCarousel() {
             const track = document.getElementById('missionTrack');
-            const indicators = document.querySelectorAll('.indicator');
+            const slides = document.querySelectorAll('.carousel-slide');
             let currentIndex = 0;
-            let startX = 0;
 
-            function goToSlide(index) {
-                currentIndex = index;
-                track.style.transform = `translateX(-${currentIndex * 100}%)`;
-                indicators.forEach((ind, i) => {
-                    ind.classList.toggle('active', i === currentIndex);
-                });
-                resetAutoScroll();
-            }
-
-            // Swipe Listeners
-            track.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-            });
-
-            track.addEventListener('touchend', (e) => {
-                const endX = e.changedTouches[0].clientX;
-                const diff = startX - endX;
-
-                if (Math.abs(diff) > 50) { // Threshold for swipe
-                    if (diff > 0 && currentIndex < slideCount - 1) {
-                        goToSlide(currentIndex + 1); // Swipe Left
-                    } else if (diff < 0 && currentIndex > 0) {
-                        goToSlide(currentIndex - 1); // Swipe Right
-                    }
-                }
-            });
-
-            // Clickable Indicators
-            indicators.forEach((indicator, index) => {
-                indicator.addEventListener('click', () => goToSlide(index));
-            });
-
-            function resetAutoScroll() {
-                if (carouselInterval) clearInterval(carouselInterval);
-                carouselInterval = setInterval(() => {
-                    currentIndex = (currentIndex + 1) % slideCount;
+            if (slides.length > 1) {
+                setInterval(() => {
+                    currentIndex = (currentIndex + 1) % slides.length;
                     track.style.transform = `translateX(-${currentIndex * 100}%)`;
-                    indicators.forEach((ind, i) => {
-                        ind.classList.toggle('active', i === currentIndex);
-                    });
-                }, 5000);
+                }, 5000); // Change slide every 5 seconds
             }
-
-            resetAutoScroll();
         }
 
         async function captureGrace(id, amt) {
