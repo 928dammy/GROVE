@@ -208,10 +208,11 @@
                 document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
             }
 
-            // MISSION SYNC
-            const { data: missions } = await _gv.from('missions').select('*').eq('status', 'active').order('created_at', { ascending: false });
+            // MISSION SYNC - Fix column name to 'active'
+            const { data: missions } = await _gv.from('missions').select('*').eq('active', true).order('created_at', { ascending: false });
+            
             if (missions && missions.length > 0) {
-                document.getElementById('orchard-msg').innerHTML = `<span class="text-emerald-400">ACTIVE MISSION:</span> ${missions[0].title}`;
+                document.getElementById('orchard-msg').innerHTML = `<span class="text-emerald-400">MISSION:</span> ${missions[0].title} - <span class="text-white">Goal: GH₵${missions[0].goal.toFixed(2)}</span>`;
             } else {
                 document.getElementById('orchard-msg').innerText = "Awaiting Grace...";
             }
