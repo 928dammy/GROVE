@@ -208,6 +208,14 @@
                 document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
             }
 
+            // MISSION SYNC
+            const { data: missions } = await _gv.from('missions').select('*').eq('status', 'active').order('created_at', { ascending: false });
+            if (missions && missions.length > 0) {
+                document.getElementById('orchard-msg').innerHTML = `<span class="text-emerald-400">ACTIVE MISSION:</span> ${missions[0].title}`;
+            } else {
+                document.getElementById('orchard-msg').innerText = "Awaiting Grace...";
+            }
+
             const { data: ledger } = await _gv.from('ledger').select('*').eq('user_id', userObj.id).order('created_at', { ascending: false });
             
             let seedTotal = 0, graceBalance = 0, vaultTotal = 0, withdrawn = 0;
@@ -217,13 +225,15 @@
                 const v = parseFloat(l.amount) || 0;
                 if(l.entry_type === 'seed' && !l.description.includes('Vault')) seedTotal += v;
                 if(l.entry_type === 'grace') {
+                    const isWither = l.description.toLowerCase().includes('wither');
                     captureHTML += `
-                        <div class="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10 mb-2">
+                        <div class="flex justify-between items-center p-4 rounded-2xl border mb-2 transition-all ${isWither ? 'animate-pulse border-rose-500/50 bg-rose-500/5' : 'bg-white/5 border-white/10'}">
                             <div class="text-left">
-                                <p class="text-[7px] font-black text-emerald-500 uppercase">Grace Arrival</p>
+                                <p class="text-[7px] font-black ${isWither ? 'text-rose-500' : 'text-emerald-500'} uppercase">${isWither ? 'URGENT: WITHER GRACE' : 'STABLE GRACE'}</p>
                                 <p class="text-[10px] text-white font-black italic">GH₵${v.toFixed(2)}</p>
+                                ${isWither ? '<p class="text-[5px] text-rose-400 font-bold uppercase mt-1">Capture before expiration</p>' : ''}
                             </div>
-                            <button onclick="captureGrace('${l.id}', ${v})" class="bg-emerald-500 text-black px-4 py-2 rounded-xl text-[8px] font-black uppercase">Capture</button>
+                            <button onclick="captureGrace('${l.id}', ${v})" class="${isWither ? 'bg-rose-500' : 'bg-emerald-500'} text-black px-4 py-2 rounded-xl text-[8px] font-black uppercase">Capture</button>
                         </div>`;
                 }
                 if(l.entry_type === 'grace_claimed') graceBalance += v;
@@ -236,7 +246,6 @@
             document.getElementById('s-reclaim').innerText = `GH₵${Math.max(0, graceBalance).toFixed(2)}`;
             document.getElementById('v-balance').innerText = `GH₵${globalVaulted.toFixed(2)}`;
             document.getElementById('capture-zone').innerHTML = captureHTML;
-            document.getElementById('orchard-msg').innerText = captureHTML ? "Grace has appeared in the Orchard!" : "Awaiting Grace...";
             
             document.getElementById('ledger-content').innerHTML = ledger?.map(l => `
                 <div class="p-4 flex justify-between items-center text-[10px]">
@@ -262,7 +271,7 @@
         }
 
         function triggerWithdrawal() { 
-            if(globalVaulted <= 0) return notify("Vault Empty", "Move funds from Grace Balance to Vault first."); 
+            if(globalVaulted <= 0) return notify("Vault Empty", "Move funds to Vault first."); 
             const fee = globalVaulted * 0.02; 
             document.getElementById('m-avail').innerText = `GH₵${globalVaulted.toFixed(2)}`; 
             document.getElementById('m-fee').innerText = `-GH₵${fee.toFixed(2)}`; 
@@ -271,7 +280,7 @@
         }
 
         async function processWithdrawal() { 
-            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -globalVaulted, entry_type: 'withdrawal', description: `Payout Request` }]); 
+            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -globalVaulted, entry_type: 'withdrawal', description: `Payout Request (2% Fee Applied)` }]); 
             toggleModal('withdrawModal', false); sync(); notify("Logged", "Pending approval."); 
         }
 
