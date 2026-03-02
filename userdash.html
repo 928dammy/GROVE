@@ -201,6 +201,9 @@
         function showActivationCard() { document.body.classList.add('withered'); document.body.classList.remove('force-scroll'); document.getElementById('manual-pay-card').style.display = 'block'; }
 
         async function sync() {
+            if(!userObj) return;
+            console.log("Syncing data for:", userObj.email);
+            
             const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
             if(!profile || profile.is_verified !== true || profile.is_suspended) {
                 document.getElementById('restore-payment-btn').classList.remove('hidden');
@@ -221,7 +224,8 @@
             }
 
             // MISSION SYNC
-            const { data: missions } = await _gv.from('missions').select('*').eq('active', true).order('created_at', { ascending: false });
+            const { data: missions, error: mErr } = await _gv.from('missions').select('*').eq('active', true).order('created_at', { ascending: false });
+            if(mErr) console.error("Missions Error:", mErr);
             
             const track = document.getElementById('missionTrack');
             const indicators = document.getElementById('carouselIndicators');
@@ -244,7 +248,9 @@
             }
 
             // LEDGER SYNC
-            const { data: ledger } = await _gv.from('ledger').select('*, profiles(email)').eq('user_id', userObj.id).order('created_at', { ascending: false });
+            const { data: ledger, error: lErr } = await _gv.from('ledger').select('*, profiles(email)').eq('user_id', userObj.id).order('created_at', { ascending: false });
+            if(lErr) console.error("Ledger Error:", lErr);
+            console.log("Ledger Data:", ledger);
             
             let seedTotal = 0, graceBalance = 0, vaultTotal = 0, withdrawn = 0;
             let captureHTML = "";
