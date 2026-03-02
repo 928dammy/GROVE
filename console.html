@@ -161,7 +161,7 @@
 
         <section id="ledger" class="tab-content">
             <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Global Transaction Log</p>
-            <div id="ledgerTable" class="bg-white/5 rounded-2xl overflow-hidden"></div>
+            <div id="ledgerTable" class="bg-white/5 rounded-2xl overflow-hidden divide-y divide-white/5"></div>
         </section>
     </main>
 
@@ -182,15 +182,12 @@
         let allNodes=[], allMsgs=[], currentChatId=null;
 
         async function sync() {
-            // Fetch all data with error handling to diagnose empty tables
-            const [{ data: profiles, error: pErr }, { data: ledger, error: lErr }, { data: messages, error: mErr }, { data: missions, error: misErr }] = await Promise.all([
+            const [{ data: profiles }, { data: ledger }, { data: messages }, { data: missions }] = await Promise.all([
                 _gv.from('profiles').select('*'),
                 _gv.from('ledger').select('*').order('created_at', { ascending: false }),
                 _gv.from('messages').select('*'),
                 _gv.from('missions').select('*').order('created_at', { ascending: false })
             ]);
-
-            if(pErr || lErr || mErr || misErr) console.error("Database Error:", {pErr, lErr, mErr, misErr});
 
             allNodes = profiles || []; 
             allMsgs = messages || [];
@@ -272,15 +269,24 @@
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">Queue Empty</p>';
 
-            document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 50).map(l => `
-                <div class="flex justify-between items-center p-3 border-b border-white/5">
-                    <div>
-                        <p class="text-[8px] font-black uppercase text-slate-200">${l.description}</p>
-                        <p class="text-[5px] text-slate-500">${new Date(l.created_at).toLocaleString()}</p>
+            // DETAILED LEDGER RENDER
+            document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 100).map(l => {
+                const isNegative = l.amount < 0;
+                const textColor = isNegative ? 'text-rose-400' : 'text-emerald-400';
+                const sign = isNegative ? '' : '+';
+                
+                return `
+                <div class="p-3 flex flex-col gap-1">
+                    <div class="flex justify-between items-center">
+                        <p class="text-[9px] font-bold text-white uppercase">${l.description || l.entry_type}</p>
+                        <p class="text-[10px] font-black ${textColor}">${sign}₵${Math.abs(l.amount).toFixed(2)}</p>
                     </div>
-                    <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
-                </div>
-            `).join('');
+                    <div class="flex justify-between items-center text-[7px] text-slate-500 uppercase font-black">
+                        <p>${l.entry_type.replace('_',' ')}</p>
+                        <p>${new Date(l.created_at).toLocaleString()}</p>
+                    </div>
+                </div>`;
+            }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">Log Empty</p>';
 
             renderInbox(); 
             updateNavBadge();
@@ -335,7 +341,6 @@
                 if (!confirm(`Distribute ₵${amt.toFixed(2)} per node with ${delay} hour delay?`)) return;
 
                 verifiedNodes.forEach(n => {
-                    // Description includes the delay time for the system to process later
                     inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `PENDING: WITHERS GRACE ${delay}h delay` });
                 });
             }
