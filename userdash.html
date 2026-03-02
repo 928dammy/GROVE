@@ -65,11 +65,6 @@
         .node-menu { position: fixed; top: 75px; right: 2rem; width: 180px; background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 15px 35px rgba(0,0,0,0.15); display: none; z-index: 500; overflow: hidden; }
         .node-menu.active { display: block; }
         .menu-item { width: 100%; padding: 14px 20px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #f8fafc; color: #64748b; cursor: pointer; }
-        
-        /* Carousel Styles */
-        .carousel-container { position: relative; width: 100%; overflow: hidden; border-radius: 1rem; }
-        .carousel-track { display: flex; transition: transform 0.5s ease-in-out; }
-        .carousel-slide { min-width: 100%; box-sizing: border-box; padding: 1rem; }
     </style>
 </head>
 <body class="max-w-md mx-auto" onclick="closeMenu()">
@@ -127,11 +122,10 @@
         </nav>
 
         <section id="t-orchard" class="tab-content active">
-            <div id="missionCarousel" class="carousel-container mb-4">
-                <div id="missionTrack" class="carousel-track">
-                    </div>
+            <div class="bg-emerald-500/10 p-5 rounded-2xl border border-white/5 mb-4 text-center">
+                <h3 class="text-sm font-black text-white italic uppercase mb-1">Impact Orchard</h3>
+                <p id="orchard-msg" class="text-[9px] text-emerald-100/60 font-semibold italic">Awaiting Grace...</p>
             </div>
-            
             <div id="capture-zone" class="space-y-2 mb-6 overflow-y-auto max-h-[300px] no-scrollbar"></div>
             
             <div id="gardener-view" class="relative w-full h-20 mt-auto"><div class="gardener-emoji">🧑‍🌾</div></div>
@@ -214,26 +208,16 @@
                 document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
             }
 
-            // MISSION SYNC - Fetch active missions with images
+            // MISSION SYNC - Fix column name to 'active'
             const { data: missions } = await _gv.from('missions').select('*').eq('active', true).order('created_at', { ascending: false });
             
-            const track = document.getElementById('missionTrack');
             if (missions && missions.length > 0) {
-                track.innerHTML = missions.map(m => `
-                    <div class="carousel-slide bg-white/5 rounded-2xl border border-white/10">
-                        ${m.image_url ? `<img src="${m.image_url}" class="w-full h-32 object-cover rounded-xl mb-3">` : ''}
-                        <h3 class="text-sm font-black text-white italic uppercase mb-1">${m.title}</h3>
-                        <p class="text-[9px] text-emerald-100/60 font-semibold italic mb-2">${m.description}</p>
-                        <p class="text-[10px] text-amber-400 font-bold">Goal: GH₵${m.goal.toFixed(2)}</p>
-                    </div>
-                `).join('');
-                startCarousel();
+                document.getElementById('orchard-msg').innerHTML = `<span class="text-emerald-400">MISSION:</span> ${missions[0].title} - <span class="text-white">Goal: GH₵${missions[0].goal.toFixed(2)}</span>`;
             } else {
-                track.innerHTML = `<div class="carousel-slide text-center text-slate-500 py-10">Awaiting Grace...</div>`;
+                document.getElementById('orchard-msg').innerText = "Awaiting Grace...";
             }
 
-            // LEDGER SYNC - Include participant info
-            const { data: ledger } = await _gv.from('ledger').select('*, profiles(email)').eq('user_id', userObj.id).order('created_at', { ascending: false });
+            const { data: ledger } = await _gv.from('ledger').select('*').eq('user_id', userObj.id).order('created_at', { ascending: false });
             
             let seedTotal = 0, graceBalance = 0, vaultTotal = 0, withdrawn = 0;
             let captureHTML = "";
@@ -264,34 +248,14 @@
             document.getElementById('v-balance').innerText = `GH₵${globalVaulted.toFixed(2)}`;
             document.getElementById('capture-zone').innerHTML = captureHTML;
             
-            // Render Ledger with participant detail
-            document.getElementById('ledger-content').innerHTML = ledger?.map(l => {
-                const participant = l.profiles ? l.profiles.email : 'SYSTEM';
-                return `
+            document.getElementById('ledger-content').innerHTML = ledger?.map(l => `
                 <div class="p-4 flex justify-between items-center text-[10px]">
-                    <div>
-                        <p class="font-black text-white uppercase">${l.entry_type.replace('_',' ')}</p>
-                        <p class="text-[7px] text-slate-500 uppercase">${l.description || ''} | <span class="text-emerald-400">${participant}</span></p>
-                    </div>
+                    <div><p class="font-black text-white uppercase">${l.entry_type.replace('_',' ')}</p><p class="text-[7px] text-slate-500 uppercase">${l.description || ''}</p></div>
                     <p class="font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
-                </div>`;
-            }).join('') || '';
+                </div>
+            `).join('') || '';
             
             fetchMessages();
-        }
-
-        // Simple Carousel Logic
-        function startCarousel() {
-            const track = document.getElementById('missionTrack');
-            const slides = document.querySelectorAll('.carousel-slide');
-            let currentIndex = 0;
-
-            if (slides.length > 1) {
-                setInterval(() => {
-                    currentIndex = (currentIndex + 1) % slides.length;
-                    track.style.transform = `translateX(-${currentIndex * 100}%)`;
-                }, 5000); // Change slide every 5 seconds
-            }
         }
 
         async function captureGrace(id, amt) {
