@@ -5,189 +5,313 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GROVE | Master Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --emerald: #10b981; --grove-deep: #061a14; --grove-leaf: #064e3b; --gold: #fbbf24; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; color: #1e293b; padding: 1rem; }
-        .terminal-parent { background: var(--grove-deep); border-radius: 2.5rem; color: #ecfdf5; min-height: 600px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(16, 185, 129, 0.1); }
-        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; gap: 4px; margin: 1rem; }
-        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 8px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; }
+        
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: #f8fafc; 
+            min-height: 100vh; 
+            padding: 1rem; 
+            color: #1e293b;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        
+        body.withered { overflow: hidden !important; height: 100vh !important; background: #020617; }
+        body.force-scroll { overflow-y: auto !important; height: auto !important; }
+
+        #suspension-overlay { display: none; position: fixed; inset: 0; z-index: 80; background: rgba(2, 6, 23, 0.4); pointer-events: none; }
+        body.withered #suspension-overlay { display: block; animation: lightning 5s infinite; }
+        @keyframes lightning { 0%, 95%, 98% { background: rgba(2, 6, 23, 0.4); } 96%, 99% { background: rgba(147, 51, 234, 0.15); } }
+        .rain-drop { position: absolute; background: rgba(255, 255, 255, 0.1); width: 1px; height: 60px; top: -100px; animation: rainFall 0.7s linear infinite; }
+        @keyframes rainFall { to { transform: translateY(110vh); } }
+
+        #p-net-logo { width: 100%; height: 40px; background-repeat: no-repeat; background-position: center; background-size: contain; display: block; margin-bottom: 12px; }
+
+        .soul-container { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+        .soul-core { width: 6px; height: 6px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 10px var(--emerald); animation: breathe 3s infinite; }
+        .soul-aura { position: absolute; inset: 0; border: 1.5px solid rgba(16, 185, 129, 0.2); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; animation: morph 8s infinite linear; }
+        @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3); } }
+        @keyframes morph { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .terminal-parent { background: var(--grove-deep); border-radius: 2.5rem; color: #ecfdf5; min-height: 580px; border: 1px solid rgba(16, 185, 129, 0.1); position: relative; overflow: hidden; z-index: 50; display: flex; flex-direction: column; }
+        .ticker-move { display: inline-block; animation: ticker 25s linear infinite; font-size: 9px; font-weight: 800; color: var(--gold); padding: 12px 0; white-space: nowrap; }
+        @keyframes ticker { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+
+        .nav-pill { background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 12px; display: flex; gap: 4px; margin: 0 1rem 1rem; position: relative; }
+        .tab-trigger { flex: 1; color: rgba(255,255,255,0.3); font-size: 9px; font-weight: 800; cursor: pointer; text-transform: uppercase; padding: 10px 0; text-align: center; border-radius: 8px; position: relative; }
         .tab-trigger.active { color: #fff; background: var(--grove-leaf); }
-        .tab-content { display: none; padding: 1rem; flex: 1; overflow-y: auto; }
+        .tab-content { display: none; padding: 0 1rem 1rem; flex: 1; overflow-y: auto; }
         .tab-content.active { display: flex; flex-direction: column; }
-        .grace-card { background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 1rem; padding: 12px; margin-bottom: 8px; animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .chat-bubble { padding: 10px 14px; border-radius: 1.25rem; max-width: 80%; font-size: 11px; line-height: 1.5; margin-bottom: 4px; position: relative; }
+        .chat-admin { background: #1e293b; color: #f8fafc; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .chat-user { background: var(--emerald); color: #061a14; align-self: flex-end; border-bottom-right-radius: 4px; font-weight: 600; }
+        .chat-meta { font-size: 7px; text-transform: uppercase; font-weight: 800; color: rgba(255,255,255,0.3); margin-bottom: 12px; }
+        
+        #msg-count { position: absolute; top: -4px; right: 2px; background: var(--gold); color: #000; font-size: 8px; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid var(--grove-deep); font-weight: 900; opacity: 0; transition: opacity 0.3s; }
+        #msg-count.visible { opacity: 1; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        .gardener-emoji { position: absolute; font-size: 40px; bottom: 0; animation: walkAndSowEmoji 8s infinite ease-in-out; }
+        @keyframes walkAndSowEmoji { 0% { transform: translateX(0); } 30%, 55% { transform: translateX(80px); } 75%, 100% { transform: translateX(0); } }
+        .vault-bg { background: linear-gradient(to bottom, #061a14, #064e3b); border-radius: 2rem; min-height: 340px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; width: 100%; }
+
+        .seed-header { position: relative; background: white; border-radius: 2rem; padding: 1.25rem; margin-bottom: 1rem; border: 1px solid #f1f5f9; z-index: 100; }
+        .node-menu { position: fixed; top: 75px; right: 2rem; width: 180px; background: white; border-radius: 1.5rem; border: 1px solid #f1f5f9; box-shadow: 0 15px 35px rgba(0,0,0,0.15); display: none; z-index: 500; overflow: hidden; }
+        .node-menu.active { display: block; }
+        .menu-item { width: 100%; padding: 14px 20px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; border-bottom: 1px solid #f8fafc; color: #64748b; cursor: pointer; }
     </style>
 </head>
-<body class="max-w-md mx-auto">
+<body class="max-w-md mx-auto" onclick="closeMenu()">
 
-    <header class="bg-white rounded-[2rem] p-5 mb-4 border border-slate-100 shadow-sm">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-lg font-black italic">GROVE</h1>
-            <span id="user-tag" class="text-[8px] font-black bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">SYNCING...</span>
+    <div id="suspension-overlay"></div>
+
+    <div id="manual-pay-card" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1000] w-[90%] max-w-[320px] bg-slate-900/95 border border-amber-500/30 rounded-[2.5rem] p-6 text-center shadow-2xl hidden">
+        <p class="text-[8px] font-black text-amber-500 uppercase italic mb-1">Node Initialization</p>
+        <h3 class="text-lg font-black text-white italic mb-4 uppercase">Activation Needed</h3>
+        <div class="bg-black/40 rounded-2xl p-4 mb-4">
+            <div id="p-net-logo"></div>
+            <div class="space-y-3 text-[9px] font-black uppercase text-left">
+                <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">Registered Name</span><span id="p-reg-name" class="text-white italic">---</span></div>
+                <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">MoMo Number</span><span id="p-reg-phone" class="text-emerald-400 tracking-widest">---</span></div>
+                <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">Planting Seed</span><span id="p-gift-val" class="text-white">GH₵ 0.00</span></div>
+                <div class="flex justify-between border-b border-white/5 pb-2"><span class="text-slate-500">Merchant</span><span id="p-merchant-num" class="text-amber-400">---</span></div>
+                <div class="pt-2 text-center"><p class="text-[7px] text-emerald-500 mb-1">Required Reference</p><p id="p-unique-ref" class="text-2xl text-white tracking-[0.3em] font-black">----</p></div>
+            </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-            <div class="bg-slate-50 p-3 rounded-2xl border"><p class="text-[7px] font-black text-slate-400 uppercase">Seed Base</p><div id="stat-seed" class="text-sm font-black italic">₵0.00</div></div>
-            <div class="bg-emerald-50 p-3 rounded-2xl border"><p class="text-[7px] font-black text-emerald-600 uppercase">Grace Balance</p><div id="stat-grace" class="text-sm font-black italic">₵0.00</div></div>
+        <p class="text-[9px] font-bold text-slate-500 mb-4 italic">"Givers Never Lack"</p>
+        <button onclick="restoreScroll()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase shadow-lg">Review Terminal</button>
+    </div>
+
+    <div id="msgModal" class="fixed inset-0 bg-black/90 hidden z-[2000] items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-xs text-center border-t-4 border-emerald-500 shadow-2xl">
+            <div class="soul-container mx-auto mb-4 scale-125"><div class="soul-aura"></div><div class="soul-core"></div></div>
+            <p id="msg-title" class="text-[8px] font-black uppercase text-slate-400 mb-1 tracking-widest">System Update</p>
+            <p id="msg-body" class="text-xs font-bold text-slate-800 italic leading-relaxed mb-6 px-2">Action completed successfully.</p>
+            <button onclick="toggleModal('msgModal', false)" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase shadow-md">Continue</button>
+        </div>
+    </div>
+
+    <header class="seed-header">
+        <div class="flex justify-between items-center mb-5">
+            <div class="flex items-center gap-3">
+                <div class="soul-container"><div class="soul-aura"></div><div class="soul-core"></div></div>
+                <div><h1 class="text-base font-black italic">GROVE</h1><p id="user-display" class="text-[7px] font-black text-emerald-600 uppercase">SYNCING...</p></div>
+            </div>
+            <button onclick="toggleMenu(event)" class="text-[7px] font-black text-slate-400 border px-4 py-1.5 rounded-lg bg-white relative z-[600]">ENGINE ⚙️</button>
+        </div>
+        <div class="flex gap-3">
+            <div class="flex-1 bg-slate-50 p-4 rounded-2xl border"><p class="text-[8px] font-black text-slate-400 uppercase">Seed Base</p><div id="s-seed" class="text-sm font-black italic">GH₵0.00</div></div>
+            <div class="flex-1 bg-emerald-50 p-4 rounded-2xl border-b-2 border-emerald-200"><p class="text-[8px] font-black text-emerald-600 uppercase">Grace Balance</p><div id="s-reclaim" class="text-sm font-black italic">GH₵0.00</div></div>
         </div>
     </header>
 
     <main class="terminal-parent">
+        <div class="broadcast-ticker"><div id="ticker-output" class="ticker-move italic">GIVERS NEVER LACK • LOADING...</div></div>
+        
         <nav class="nav-pill">
             <div id="btn-orchard" class="tab-trigger active" onclick="openTab('t-orchard')">Orchard</div>
             <div id="btn-vault" class="tab-trigger" onclick="openTab('t-vault')">Vault</div>
+            <div id="btn-comm" class="tab-trigger" onclick="openTab('t-comm')">Messages<span id="msg-count">0</span></div>
             <div id="btn-ledger" class="tab-trigger" onclick="openTab('t-ledger')">Ledger</div>
         </nav>
 
         <section id="t-orchard" class="tab-content active">
-            <div class="text-center mb-6">
-                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest italic">"Givers Never Lack"</p>
-                <h2 id="orchard-status" class="text-xs text-slate-400 mt-1">Scanning for incoming Grace...</h2>
+            <div class="bg-emerald-500/10 p-5 rounded-2xl border border-white/5 mb-4 text-center">
+                <h3 class="text-sm font-black text-white italic uppercase mb-1">Impact Orchard</h3>
+                <p id="orchard-msg" class="text-[9px] text-emerald-100/60 font-semibold italic">Awaiting Grace...</p>
             </div>
+            <div id="capture-zone" class="space-y-2 mb-6 overflow-y-auto max-h-[300px] no-scrollbar"></div>
             
-            <div id="grace-distribution-list" class="space-y-2 mb-6">
-                </div>
-
-            <div id="harvest-zone" class="mt-auto hidden">
-                <button onclick="harvestAll()" class="w-full py-4 bg-emerald-500 text-black font-black rounded-2xl text-[10px] uppercase shadow-lg transform active:scale-95 transition">Harvest All to Balance</button>
-            </div>
+            <div id="gardener-view" class="relative w-full h-20 mt-auto"><div class="gardener-emoji">🧑‍🌾</div></div>
+            <button id="restore-payment-btn" onclick="showActivationCard()" class="mx-auto mb-4 py-3 px-8 border border-amber-500/30 bg-amber-500/5 text-amber-500 text-[9px] font-black uppercase rounded-full hidden">Restore Activation Card</button>
         </section>
 
         <section id="t-vault" class="tab-content">
-            <div class="bg-emerald-900/30 p-8 rounded-3xl text-center border border-white/5">
-                <p class="text-[8px] font-black text-emerald-400 uppercase mb-2">Claim Vaulted</p>
-                <h2 id="vault-display" class="text-4xl font-black italic text-white mb-8">₵0.00</h2>
-                <div class="space-y-3">
-                    <button onclick="moveToVault()" class="w-full py-4 bg-white text-emerald-900 rounded-2xl text-[8px] font-black uppercase">Move Grace to Vault</button>
-                    <button onclick="prepWithdrawal()" class="w-full py-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[8px] font-black uppercase">Withdraw Funds</button>
+            <div class="vault-bg">
+                <div class="relative z-30 text-center w-full">
+                    <p class="text-[8px] font-black text-emerald-400 uppercase mb-2">Claim Vaulted</p>
+                    <h2 id="v-balance" class="text-4xl font-black italic text-white mb-8">GH₵0.00</h2>
+                    <div class="flex flex-col gap-3 px-6">
+                        <button onclick="vaultGrace()" class="w-full py-4 bg-white text-emerald-900 rounded-2xl text-[8px] font-black uppercase tracking-widest">Claim to Vault</button>
+                        <button onclick="triggerWithdrawal()" class="w-full py-4 bg-emerald-500/20 text-white rounded-2xl text-[8px] font-black uppercase border border-emerald-500/30">Withdraw</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="t-comm" class="tab-content h-full">
+            <div id="chat-scroller" class="flex-1 overflow-y-auto pr-2 space-y-1 min-h-[320px] py-4 flex flex-col"></div>
+            <div class="pt-4 border-t border-white/5">
+                <div class="relative">
+                    <input id="chat-input" type="text" placeholder="REPLY..." class="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-5 text-[10px] text-white focus:outline-none">
+                    <button onclick="sendMessage()" class="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 font-black text-[9px] uppercase px-3">Send</button>
                 </div>
             </div>
         </section>
 
         <section id="t-ledger" class="tab-content">
-            <div id="ledger-list" class="space-y-1"></div>
+            <div id="ledger-content" class="bg-black/20 rounded-2xl divide-y divide-white/5"></div>
         </section>
     </main>
 
-    <div id="withdrawModal" class="fixed inset-0 bg-black/90 hidden z-[100] items-center justify-center p-6">
-        <div class="bg-white p-6 rounded-[2.5rem] w-full max-w-xs text-center">
-            <p class="text-[9px] font-black text-emerald-600 uppercase italic">Terminal Payout</p>
-            <div class="my-6 space-y-2 border-y border-slate-100 py-4">
-                <div class="flex justify-between text-[10px]"><span class="text-slate-400">AVAILABLE</span><span id="wd-avail" class="font-black text-black">₵0.00</span></div>
-                <div class="flex justify-between text-[10px]"><span class="text-rose-400">SERVICE FEE (2%)</span><span id="wd-fee" class="font-black text-rose-500">-₵0.00</span></div>
-                <div class="flex justify-between text-base font-black pt-2"><span>TOTAL</span><span id="wd-final" class="text-emerald-600">₵0.00</span></div>
+    <div id="withdrawModal" class="fixed inset-0 bg-black/95 hidden z-[1100] items-center justify-center p-6">
+        <div class="bg-white p-8 rounded-[2.5rem] w-full max-w-xs text-center">
+            <p class="text-[10px] font-black uppercase text-emerald-600 mb-1 italic">Withdrawal Terminal</p>
+            <div class="space-y-4 my-6">
+                <div class="flex justify-between text-[9px] font-black"><span class="text-slate-400 uppercase">Available</span><span id="m-avail">GH₵0.00</span></div>
+                <div class="flex justify-between text-[9px] font-black border-b pb-2 text-rose-500"><span class="uppercase">Service Fee (2%)</span><span id="m-fee">-GH₵0.00</span></div>
+                <div class="flex justify-between text-base font-black italic"><span>Payout</span><span id="m-final" class="text-emerald-600">GH₵0.00</span></div>
             </div>
-            <button onclick="confirmWithdraw()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[10px] uppercase">Process Claim</button>
-            <button onclick="closeModal()" class="mt-2 text-[8px] font-black text-slate-400 uppercase">Cancel</button>
+            <button onclick="processWithdrawal()" class="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[9px] uppercase">Confirm</button>
+            <button onclick="toggleModal('withdrawModal', false)" class="w-full text-[8px] font-black text-slate-400 uppercase py-2 mt-2">Cancel</button>
         </div>
     </div>
 
+    <div id="nodeMenu" class="node-menu"><button onclick="logout()" class="menu-item text-red-500 font-black">Exit Terminal</button></div>
+
     <script>
-        const _gv = supabase.createClient("YOUR_SB_URL", "YOUR_SB_KEY");
-        let userObj = null, totalVault = 0, pendingGraceTotal = 0;
+        const SB_URL = window.CONFIG?.SB_URL || "https://efiacszdzogknbucfgeu.supabase.co";
+        const SB_KEY = window.CONFIG?.SB_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
+        const _gv = supabase.createClient(SB_URL, SB_KEY);
+        let userObj = null, globalVaulted = 0;
+
+        function toggleMenu(e) { e.stopPropagation(); document.getElementById('nodeMenu').classList.toggle('active'); }
+        function closeMenu() { document.getElementById('nodeMenu').classList.remove('active'); }
+        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+        function notify(title, body) { document.getElementById('msg-title').innerText = title; document.getElementById('msg-body').innerText = body; toggleModal('msgModal', true); }
+        function restoreScroll() { document.getElementById('manual-pay-card').style.display = 'none'; document.body.classList.remove('withered'); document.body.classList.add('force-scroll'); }
+        function showActivationCard() { document.body.classList.add('withered'); document.body.classList.remove('force-scroll'); document.getElementById('manual-pay-card').style.display = 'block'; }
 
         async function sync() {
-            const { data: { user } } = await _gv.auth.getUser();
-            if(!user) return;
-            userObj = user;
-            document.getElementById('user-tag').innerText = user.email.split('@')[0].toUpperCase();
+            const { data: profile } = await _gv.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
+            if(!profile || profile.is_verified !== true || profile.is_suspended) {
+                document.getElementById('restore-payment-btn').classList.remove('hidden');
+                if(!document.body.classList.contains('force-scroll')) showActivationCard();
+                if(profile) {
+                    document.getElementById('p-reg-name').innerText = profile.full_name || "---";
+                    document.getElementById('p-reg-phone').innerText = profile.phone || "---";
+                    document.getElementById('p-gift-val').innerText = `GH₵ ${(profile.current_range_max || 0).toFixed(2)}`;
+                    document.getElementById('p-unique-ref').innerText = profile.payment_ref || "----";
+                    document.getElementById('p-merchant-num').innerText = "0535261448 (MTN)";
+                    document.getElementById('p-net-logo').style.backgroundImage = "url('https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/1200px-MTN_Logo.svg.png')";
+                }
+            } else {
+                document.body.classList.remove('withered'); document.body.classList.add('force-scroll');
+                document.getElementById('manual-pay-card').style.display = 'none';
+                document.getElementById('restore-payment-btn').classList.add('hidden');
+                document.getElementById('user-display').innerText = userObj.email.split('@')[0].toUpperCase();
+            }
 
-            const { data: ledger } = await _gv.from('ledger').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+            const { data: ledger } = await _gv.from('ledger').select('*').eq('user_id', userObj.id).order('created_at', { ascending: false });
+            
+            let seedTotal = 0, graceBalance = 0, vaultTotal = 0, withdrawn = 0;
+            let captureHTML = "";
 
-            let seed = 0, graceBal = 0, vault = 0, pendingGrace = 0;
-            let distribHTML = "";
-            let ledgerHTML = "";
-
-            ledger?.forEach(item => {
-                const amt = parseFloat(item.amount);
-                // Distributed but not yet "Harvested"
-                if(item.entry_type === 'grace') {
-                    pendingGrace += amt;
-                    distribHTML += `
-                        <div class="grace-card flex justify-between items-center">
-                            <div><p class="text-[7px] font-black text-emerald-500 uppercase">Distribution</p><p class="text-[9px] text-white italic">${item.description}</p></div>
-                            <p class="text-xs font-black text-emerald-400">+₵${amt.toFixed(2)}</p>
+            ledger?.forEach(l => {
+                const v = parseFloat(l.amount) || 0;
+                if(l.entry_type === 'seed' && !l.description.includes('Vault')) seedTotal += v;
+                if(l.entry_type === 'grace') {
+                    captureHTML += `
+                        <div class="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10 mb-2">
+                            <div class="text-left">
+                                <p class="text-[7px] font-black text-emerald-500 uppercase">Grace Arrival</p>
+                                <p class="text-[10px] text-white font-black italic">GH₵${v.toFixed(2)}</p>
+                            </div>
+                            <button onclick="captureGrace('${l.id}', ${v})" class="bg-emerald-500 text-black px-4 py-2 rounded-xl text-[8px] font-black uppercase">Capture</button>
                         </div>`;
                 }
-                // Categorize Totals
-                if(item.entry_type === 'seed') seed += amt;
-                if(item.entry_type === 'grace_claimed') graceBal += amt;
-                if(item.entry_type === 'vault_deposit') vault += amt;
-                if(item.entry_type === 'withdrawal') vault += amt; // amount is negative
-
-                ledgerHTML += `
-                    <div class="p-3 flex justify-between text-[9px] border-b border-white/5">
-                        <span class="text-slate-400 uppercase">${item.entry_type.replace('_',' ')}</span>
-                        <span class="${amt >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-black">₵${Math.abs(amt).toFixed(2)}</span>
-                    </div>`;
+                if(l.entry_type === 'grace_claimed') graceBalance += v;
+                if(l.entry_type === 'vault_deposit') vaultTotal += v;
+                if(l.entry_type === 'withdrawal') withdrawn += Math.abs(v);
             });
 
-            pendingGraceTotal = pendingGrace;
-            totalVault = vault;
-
-            document.getElementById('stat-seed').innerText = `₵${seed.toFixed(2)}`;
-            document.getElementById('stat-grace').innerText = `₵${graceBal.toFixed(2)}`;
-            document.getElementById('vault-display').innerText = `₵${vault.toFixed(2)}`;
-            document.getElementById('grace-distribution-list').innerHTML = distribHTML;
-            document.getElementById('ledger-list').innerHTML = ledgerHTML;
-
-            // Toggle UI states
-            document.getElementById('orchard-status').innerText = pendingGrace > 0 ? "New Grace has arrived!" : "Waiting for Grace to appear...";
-            document.getElementById('harvest-zone').style.display = pendingGrace > 0 ? 'block' : 'none';
-        }
-
-        async function harvestAll() {
-            if(pendingGraceTotal <= 0) return;
-            // 1. Move total pending to 'grace_claimed'
-            await _gv.from('ledger').insert([{ 
-                user_id: userObj.id, amount: pendingGraceTotal, entry_type: 'grace_claimed', description: 'Harvested from Orchard' 
-            }]);
-            // 2. Clear out the 'grace' entries
-            await _gv.from('ledger').delete().eq('user_id', userObj.id).eq('entry_type', 'grace');
-            sync();
-        }
-
-        async function moveToVault() {
-            const graceVal = parseFloat(document.getElementById('stat-grace').innerText.replace('₵',''));
-            if(graceVal <= 0) return alert("Nothing to vault!");
+            globalVaulted = Math.max(0, vaultTotal - withdrawn);
+            document.getElementById('s-seed').innerText = `GH₵${Math.max(0, seedTotal).toFixed(2)}`;
+            document.getElementById('s-reclaim').innerText = `GH₵${Math.max(0, graceBalance).toFixed(2)}`;
+            document.getElementById('v-balance').innerText = `GH₵${globalVaulted.toFixed(2)}`;
+            document.getElementById('capture-zone').innerHTML = captureHTML;
+            document.getElementById('orchard-msg').innerText = captureHTML ? "Grace has appeared in the Orchard!" : "Awaiting Grace...";
             
-            await _gv.from('ledger').insert([
-                { user_id: userObj.id, amount: -graceVal, entry_type: 'grace_claimed', description: 'Moved to Vault' },
-                { user_id: userObj.id, amount: graceVal, entry_type: 'vault_deposit', description: 'Received from Balance' }
-            ]);
+            document.getElementById('ledger-content').innerHTML = ledger?.map(l => `
+                <div class="p-4 flex justify-between items-center text-[10px]">
+                    <div><p class="font-black text-white uppercase">${l.entry_type.replace('_',' ')}</p><p class="text-[7px] text-slate-500 uppercase">${l.description || ''}</p></div>
+                    <p class="font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
+                </div>
+            `).join('') || '';
+            
+            fetchMessages();
+        }
+
+        async function captureGrace(id, amt) {
+            const { error } = await _gv.from('ledger').insert([{ user_id: userObj.id, amount: amt, entry_type: 'grace_claimed', description: `Captured GH₵${amt.toFixed(2)}` }]);
+            if(!error) { await _gv.from('ledger').delete().eq('id', id); sync(); }
+        }
+
+        async function vaultGrace() {
+            const currentGrace = parseFloat(document.getElementById('s-reclaim').innerText.replace('GH₵','')) || 0;
+            if (currentGrace <= 0) return notify("Empty Balance", "No Grace to vault.");
+            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: currentGrace, entry_type: 'vault_deposit', description: `Transfer to Vault` }]);
+            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -currentGrace, entry_type: 'grace_claimed', description: `Moved GH₵${currentGrace.toFixed(2)} to Vault` }]);
             sync();
         }
 
-        function prepWithdrawal() {
-            if(totalVault <= 0) return alert("Vault is empty!");
-            const fee = totalVault * 0.02;
-            document.getElementById('wd-avail').innerText = `₵${totalVault.toFixed(2)}`;
-            document.getElementById('wd-fee').innerText = `-₵${fee.toFixed(2)}`;
-            document.getElementById('wd-final').innerText = `₵${(totalVault - fee).toFixed(2)}`;
-            document.getElementById('withdrawModal').style.display = 'flex';
+        function triggerWithdrawal() { 
+            if(globalVaulted <= 0) return notify("Vault Empty", "Move funds from Grace Balance to Vault first."); 
+            const fee = globalVaulted * 0.02; 
+            document.getElementById('m-avail').innerText = `GH₵${globalVaulted.toFixed(2)}`; 
+            document.getElementById('m-fee').innerText = `-GH₵${fee.toFixed(2)}`; 
+            document.getElementById('m-final').innerText = `GH₵${(globalVaulted - fee).toFixed(2)}`; 
+            toggleModal('withdrawModal', true); 
         }
 
-        async function confirmWithdraw() {
-            await _gv.from('ledger').insert([{ 
-                user_id: userObj.id, amount: -totalVault, entry_type: 'withdrawal', description: 'Payout (2% Fee Ded.)' 
-            }]);
-            closeModal();
-            sync();
+        async function processWithdrawal() { 
+            await _gv.from('ledger').insert([{ user_id: userObj.id, amount: -globalVaulted, entry_type: 'withdrawal', description: `Payout Request` }]); 
+            toggleModal('withdrawModal', false); sync(); notify("Logged", "Pending approval."); 
         }
 
-        function openTab(id) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
+        async function fetchMessages() {
+            const { data: msgs } = await _gv.from('messages').select('*').or(`receiver_id.eq.${userObj.id},sender_id.eq.${userObj.id}`).order('created_at', { ascending: true });
+            const unread = msgs?.filter(m => m.receiver_id === userObj.id && !m.is_read).length || 0;
+            const badge = document.getElementById('msg-count');
+            badge.innerText = unread; badge.className = unread > 0 ? 'visible' : '';
+            document.getElementById('chat-scroller').innerHTML = msgs?.map(m => `
+                <div class="chat-bubble ${m.sender_id === userObj.id ? 'chat-user' : 'chat-admin'}">${m.content}</div>
+                <div class="chat-meta">${m.sender_id === userObj.id ? 'Sent' : 'Admin'} • ${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+            `).join('') || '';
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const val = input.value.trim(); if(!val) return;
+            await _gv.from('messages').insert([{ sender_id: userObj.id, receiver_id: '00000000-0000-0000-0000-000000000000', content: val, sender_name: 'USER' }]);
+            input.value = ''; fetchMessages();
+        }
+
+        function createRain() { const ov = document.getElementById('suspension-overlay'); for(let i=0; i<30; i++) { const d = document.createElement('div'); d.className = 'rain-drop'; d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() * 2 + 's'; ov.appendChild(d); } }
+        
+        function openTab(id) { 
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); 
+            document.querySelectorAll('.tab-trigger').forEach(b => b.classList.remove('active')); 
+            document.getElementById(id).classList.add('active'); 
             document.getElementById('btn-' + id.split('-')[1]).classList.add('active');
+            if(id === 't-comm') { document.getElementById('chat-scroller').scrollTop = 9999; _gv.from('messages').update({is_read:true}).eq('receiver_id', userObj.id); }
         }
 
-        function closeModal() { document.getElementById('withdrawModal').style.display = 'none'; }
+        async function logout() { await _gv.auth.signOut(); window.location.href = "index.html"; }
 
-        // Start & Realtime
-        sync();
-        _gv.channel('ledger-db').on('postgres_changes', {event:'*', schema:'public', table:'ledger'}, () => sync()).subscribe();
+        async function init() { 
+            const { data: { user } } = await _gv.auth.getUser(); 
+            if(!user) return window.location.href = "index.html"; 
+            userObj = user; createRain(); sync();
+            _gv.channel('realtime-sync').on('postgres_changes', {event:'*', schema:'public'}, () => sync()).subscribe(); 
+        }
+        init();
     </script>
 </body>
 </html>
