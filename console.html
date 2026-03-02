@@ -1,4 +1,4 @@
-Are you sure this admin code is full and no deductions <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -302,6 +302,7 @@ Are you sure this admin code is full and no deductions <!DOCTYPE html>
             sync();
         }
 
+        // --- UPDATED distributeGrace FUNCTION ---
         async function distributeGrace(type) {
             const verifiedNodes = allNodes.filter(n => n.is_verified);
             if (verifiedNodes.length === 0) return alert("No verified nodes.");
@@ -315,8 +316,9 @@ Are you sure this admin code is full and no deductions <!DOCTYPE html>
                 if (!confirm(`Deduct ₵${(amt * verifiedNodes.length).toFixed(2)} from pool now?`)) return;
 
                 verifiedNodes.forEach(n => {
-                    inserts.push({ user_id: SYSTEM_ADMIN_ID, amount: -amt, entry_type: 'distribution', description: `STABLE GRACE OUTFLOW` });
-                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: STABLE GRACE` });
+                    // Audit-proof description including user_id
+                    inserts.push({ user_id: SYSTEM_ADMIN_ID, amount: -amt, entry_type: 'distribution', description: `STABLE GRACE OUTFLOW to ${n.id}` });
+                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: STABLE GRACE from Admin` });
                 });
             } else {
                 const pct = parseFloat(document.getElementById('withersPct').value);
@@ -328,7 +330,8 @@ Are you sure this admin code is full and no deductions <!DOCTYPE html>
                 if (!confirm(`Distribute ₵${amt.toFixed(2)} per node? No pool deduction until claim.`)) return;
 
                 verifiedNodes.forEach(n => {
-                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: WITHERS GRACE` });
+                    // Audit-proof description including user_id
+                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: WITHERS GRACE for ${n.id}` });
                 });
             }
 
@@ -363,11 +366,14 @@ Are you sure this admin code is full and no deductions <!DOCTYPE html>
             sync();
         }
 
+        // --- UPDATED approvePayout FUNCTION ---
         async function approvePayout(ledgerId, userId, fullAmount) {
             const charge = fullAmount * 0.02;
+            const net = fullAmount - charge;
             if(confirm(`Approve payout? Net will be sent, 2% (₵${charge.toFixed(2)}) stays in Pool.`)) {
-                await _gv.from('ledger').update({ description: 'CLAIM PAID & COMPLETED' }).eq('id', ledgerId);
-                await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: charge, entry_type: 'service_charge', description: `SERVICE CHARGE FROM WITHDRAWAL` }]);
+                // Audit-proof description including net amount and user_id
+                await _gv.from('ledger').update({ description: `PAID: ₵${net.toFixed(2)} Net to ${userId}` }).eq('id', ledgerId);
+                await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: charge, entry_type: 'service_charge', description: `SERVICE CHARGE (2%) from ${userId}` }]);
                 sync();
             }
         }
