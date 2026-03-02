@@ -110,11 +110,12 @@
                 <div class="space-y-3">
                     <input type="text" id="missionTitle" placeholder="Title" class="input-box">
                     <textarea id="missionDesc" placeholder="Description" class="input-box h-16"></textarea>
+                    <input type="text" id="missionImg" placeholder="Image URL (Optional)" class="input-box">
                     <input type="number" id="missionGoal" placeholder="Goal ₵" class="input-box">
                     <button onclick="publishMission()" class="w-full py-3 bg-amber-600 rounded-xl font-black text-[10px] uppercase">Initialize Broadcast</button>
                 </div>
             </div>
-            <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Live Missions</p>
+            <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Live Missions (Carousel Active)</p>
             <div id="missionList" class="space-y-3"></div>
         </section>
 
@@ -240,9 +241,10 @@
                 </div>`;
             }).join('');
 
-            // Render Missions
+            // Render Missions (Updated for Image URL)
             document.getElementById('missionList').innerHTML = missions.map(m => `
                 <div class="auth-card p-4 border-l-2 ${m.active ? 'border-amber-500' : 'border-slate-700'}">
+                    ${m.image_url ? `<img src="${m.image_url}" class="w-full h-32 object-cover rounded-xl mb-3">` : ''}
                     <div class="flex justify-between mb-2">
                         <p class="text-[10px] font-black uppercase text-white">${m.title}</p>
                         <p class="text-[8px] font-black text-amber-400">₵${m.goal.toFixed(2)}</p>
@@ -269,16 +271,20 @@
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">Queue Empty</p>';
 
-            // DETAILED LEDGER RENDER
+            // DETAILED LEDGER RENDER WITH USER EMAIL
             document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 100).map(l => {
                 const isNegative = l.amount < 0;
                 const textColor = isNegative ? 'text-rose-400' : 'text-emerald-400';
                 const sign = isNegative ? '' : '+';
                 
+                // Find user for this ledger entry
+                const user = allNodes.find(n => n.id === l.user_id);
+                const userDisplay = user ? user.email : 'SYSTEM';
+                
                 return `
                 <div class="p-3 flex flex-col gap-1">
                     <div class="flex justify-between items-center">
-                        <p class="text-[9px] font-bold text-white uppercase">${l.description || l.entry_type}</p>
+                        <p class="text-[9px] font-bold text-white uppercase">${l.description || l.entry_type} | <span class="text-slate-400">${userDisplay}</span></p>
                         <p class="text-[10px] font-black ${textColor}">${sign}₵${Math.abs(l.amount).toFixed(2)}</p>
                     </div>
                     <div class="flex justify-between items-center text-[7px] text-slate-500 uppercase font-black">
@@ -295,11 +301,12 @@
         async function publishMission() {
             const title = document.getElementById('missionTitle').value;
             const desc = document.getElementById('missionDesc').value;
+            const img = document.getElementById('missionImg').value;
             const goal = document.getElementById('missionGoal').value;
             if(!title || !goal) return alert("Enter Title and Goal");
             
             if(!confirm("Broadcast this mission?")) return;
-            await _gv.from('missions').insert([{ title, description: desc, goal: parseFloat(goal), active: true }]);
+            await _gv.from('missions').insert([{ title, description: desc, image_url: img, goal: parseFloat(goal), active: true }]);
             sync();
         }
 
