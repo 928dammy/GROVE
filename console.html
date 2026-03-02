@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+Are you sure this admin code is full and no deductions <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -22,24 +22,9 @@
         .bubble-out { background: #10b981; color: #020617; align-self: flex-end; border-radius: 1.2rem; border-bottom-right-radius: 4px; padding: 12px; max-width: 80%; font-size: 12px; font-weight: 700; }
         .view-hidden { display: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        /* Modal Styles */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100; display: none; justify-content: center; align-items: center; }
-        .modal-content { background: #0f172a; border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 1.5rem; padding: 2rem; width: 90%; max-width: 400px; text-align: center; }
     </style>
 </head>
 <body class="bg-slate-950">
-
-    <div id="customModal" class="modal-overlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 id="modalTitle" class="text-xl font-black text-white mb-2"></h3>
-            <p id="modalMessage" class="text-sm text-slate-300 mb-6"></p>
-            <div id="modalActions" class="grid grid-cols-2 gap-2">
-                <button onclick="closeModal()" class="bg-white/10 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Cancel</button>
-                <button id="modalConfirmBtn" onclick="" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase">Confirm</button>
-            </div>
-            <button id="modalOkBtn" onclick="closeModal()" class="bg-emerald-600 text-white w-full py-3 rounded-xl font-black text-xs uppercase hidden">Understand</button>
-        </div>
-    </div>
 
     <header class="p-4 sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-white/5">
         <div class="flex justify-between items-center mb-3">
@@ -175,7 +160,6 @@
 
         <section id="ledger" class="tab-content">
             <p class="text-[9px] font-black uppercase text-slate-500 mb-4 tracking-widest">Global Transaction Log</p>
-            <input type="text" id="ledgerSearch" oninput="sync()" placeholder="Search logs (type, user, date)..." class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm w-full mb-4 outline-none">
             <div id="ledgerTable" class="bg-white/5 rounded-2xl overflow-hidden"></div>
         </section>
     </main>
@@ -194,29 +178,7 @@
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmaWFjc3pkem9na25idWNmZ2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MjYyMDYsImV4cCI6MjA4NjQwMjIwNn0.F_fle-dOk-g1Pvh5ezDinOAzGWwlIBhLYvZkNAc2Ouc";
         const _gv = supabase.createClient(SB_URL, SB_KEY);
         const SYSTEM_ADMIN_ID = "00000000-0000-0000-0000-000000000000";
-        let allNodes=[], allMsgs=[], allLedger=[], allMissions=[], currentChatId=null;
-
-        function showModal(title, message, confirmAction = null) {
-            document.getElementById('modalTitle').innerText = title;
-            document.getElementById('modalMessage').innerText = message;
-            document.getElementById('customModal').style.display = 'flex';
-            
-            if (confirmAction) {
-                document.getElementById('modalActions').classList.remove('hidden');
-                document.getElementById('modalOkBtn').classList.add('hidden');
-                document.getElementById('modalConfirmBtn').onclick = async () => {
-                    await confirmAction();
-                    closeModal();
-                };
-            } else {
-                document.getElementById('modalActions').classList.add('hidden');
-                document.getElementById('modalOkBtn').classList.remove('hidden');
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('customModal').style.display = 'none';
-        }
+        let allNodes=[], allMsgs=[], currentChatId=null;
 
         async function sync() {
             const { data: profiles } = await _gv.from('profiles').select('*');
@@ -226,14 +188,12 @@
             
             allNodes = profiles || []; 
             allMsgs = messages || [];
-            allLedger = ledger || [];
-            allMissions = missions || [];
 
             let totalSeeded = 0;
             let currentPool = 0;
             let totalFees = 0;
 
-            allLedger.forEach(l => {
+            ledger?.forEach(l => {
                 if(l.entry_type === 'seed') totalSeeded += Math.abs(l.amount);
                 if(l.entry_type === 'service_charge') totalFees += Math.abs(l.amount);
                 currentPool += l.amount;
@@ -250,7 +210,7 @@
 
             const search = document.getElementById('nodeSearch').value.toLowerCase();
             document.getElementById('nodeList').innerHTML = allNodes.filter(n => n.email?.toLowerCase().includes(search) || n.full_name?.toLowerCase().includes(search)).map(n => {
-                const userLedger = allLedger.filter(l => l.user_id === n.id);
+                const userLedger = ledger?.filter(l => l.user_id === n.id) || [];
                 const seeds = userLedger.filter(l => l.entry_type === 'seed').reduce((a,b)=>a+b.amount,0);
                 const vault = userLedger.filter(l => l.description.includes('Vaulted')).reduce((a,b)=>a+Math.abs(b.amount),0);
                 const claims = userLedger.filter(l => l.description.includes('PAID')).reduce((a,b)=>a+Math.abs(b.amount),0);
@@ -278,7 +238,7 @@
             }).join('');
 
             // Render Missions
-            document.getElementById('missionList').innerHTML = allMissions.map(m => `
+            document.getElementById('missionList').innerHTML = missions.map(m => `
                 <div class="auth-card p-4 border-l-2 ${m.active ? 'border-amber-500' : 'border-slate-700'}">
                     <div class="flex justify-between mb-2">
                         <p class="text-[10px] font-black uppercase text-white">${m.title}</p>
@@ -292,7 +252,7 @@
                 </div>
             `).join('');
 
-            const pendingPayouts = allLedger.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID'));
+            const pendingPayouts = ledger?.filter(l => l.entry_type === 'withdrawal' && !l.description.includes('PAID')) || [];
             document.getElementById('payoutList').innerHTML = pendingPayouts.map(w => {
                 const node = allNodes.find(n => n.id === w.user_id);
                 const charge = Math.abs(w.amount) * 0.02;
@@ -306,21 +266,13 @@
                 </div>`;
             }).join('') || '<p class="text-center py-10 text-[8px] opacity-30 font-black uppercase">Queue Empty</p>';
 
-            // Ledger Search and Rendering
-            const ledgerSearch = document.getElementById('ledgerSearch').value.toLowerCase();
-            document.getElementById('ledgerTable').innerHTML = allLedger.filter(l => 
-                l.description.toLowerCase().includes(ledgerSearch) || 
-                l.entry_type.toLowerCase().includes(ledgerSearch) ||
-                l.user_id.toLowerCase().includes(ledgerSearch)
-            ).slice(0, 100).map(l => `
+            document.getElementById('ledgerTable').innerHTML = ledger?.slice(0, 50).map(l => `
                 <div class="flex justify-between items-center p-3 border-b border-white/5">
                     <div>
-                        <p class="text-[8px] font-black uppercase ${l.amount < 0 ? 'text-rose-400' : 'text-slate-200'}">${l.description}</p>
+                        <p class="text-[8px] font-black uppercase text-slate-200">${l.description}</p>
                         <p class="text-[5px] text-slate-500">${new Date(l.created_at).toLocaleString()}</p>
                     </div>
-                    <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">
-                        ${l.amount < 0 ? '-' : '+'}₵${Math.abs(l.amount).toFixed(2)}
-                    </p>
+                    <p class="text-[9px] font-black ${l.amount < 0 ? 'text-rose-500' : 'text-emerald-500'}">₵${Math.abs(l.amount).toFixed(2)}</p>
                 </div>
             `).join('');
 
@@ -332,19 +284,11 @@
             const title = document.getElementById('missionTitle').value;
             const desc = document.getElementById('missionDesc').value;
             const goal = document.getElementById('missionGoal').value;
-            if(!title || !goal) { showModal("Error", "Enter Title and Goal"); return; }
+            if(!title || !goal) return alert("Enter Title and Goal");
             
-            showModal("Confirm", "Broadcast this mission?", async () => {
-                await _gv.from('missions').insert([{ title, description: desc, goal: parseFloat(goal), active: true }]);
-                
-                // Record mission creation in ledger
-                await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: 0, entry_type: 'mission_created', description: `Mission: ${title}` }]);
-                
-                document.getElementById('missionTitle').value = '';
-                document.getElementById('missionDesc').value = '';
-                document.getElementById('missionGoal').value = '';
-                sync();
-            });
+            if(!confirm("Broadcast this mission?")) return;
+            await _gv.from('missions').insert([{ title, description: desc, goal: parseFloat(goal), active: true }]);
+            sync();
         }
 
         async function toggleMission(id, currentStatus) {
@@ -353,66 +297,62 @@
         }
 
         async function deleteMission(id) {
-            showModal("Danger", "Delete this mission?", async () => {
-                await _gv.from('missions').delete().eq('id', id);
-                sync();
-            });
+            if(!confirm("Delete this mission?")) return;
+            await _gv.from('missions').delete().eq('id', id);
+            sync();
         }
 
         async function distributeGrace(type) {
             const verifiedNodes = allNodes.filter(n => n.is_verified);
-            if (verifiedNodes.length === 0) { showModal("Error", "No verified nodes."); return; }
+            if (verifiedNodes.length === 0) return alert("No verified nodes.");
             
             const inserts = [];
             let amt = 0;
 
             if (type === 'stable') {
                 amt = parseFloat(document.getElementById('stableAmt').value);
-                if (!amt || amt <= 0) { showModal("Error", "Enter valid amount"); return; }
-                
-                showModal("Confirm", `Deduct ₵${(amt * verifiedNodes.length).toFixed(2)} from pool now?`, async () => {
-                    verifiedNodes.forEach(n => {
-                        inserts.push({ user_id: SYSTEM_ADMIN_ID, amount: -amt, entry_type: 'distribution', description: `STABLE GRACE OUTFLOW` });
-                        inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: STABLE GRACE` });
-                    });
-                    const { error } = await _gv.from('ledger').insert(inserts);
-                    if(!error) { 
-                        document.getElementById('stableAmt').value = '';
-                        sync(); 
-                    }
+                if (!amt || amt <= 0) return alert("Enter valid amount");
+                if (!confirm(`Deduct ₵${(amt * verifiedNodes.length).toFixed(2)} from pool now?`)) return;
+
+                verifiedNodes.forEach(n => {
+                    inserts.push({ user_id: SYSTEM_ADMIN_ID, amount: -amt, entry_type: 'distribution', description: `STABLE GRACE OUTFLOW` });
+                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: STABLE GRACE` });
                 });
             } else {
                 const pct = parseFloat(document.getElementById('withersPct').value);
-                if (!pct || pct <= 0) { showModal("Error", "Enter valid percentage"); return; }
+                if (!pct || pct <= 0) return alert("Enter valid percentage");
                 
                 const currentPool = parseFloat(document.getElementById('stat-pool').innerText.replace('₵',''));
                 amt = (currentPool * (pct/100)) / verifiedNodes.length;
 
-                showModal("Confirm", `Distribute ₵${amt.toFixed(2)} per node? No pool deduction until claim.`, async () => {
-                    verifiedNodes.forEach(n => {
-                        inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: WITHERS GRACE` });
-                    });
-                    const { error } = await _gv.from('ledger').insert(inserts);
-                    if(!error) {
-                        document.getElementById('withersPct').value = '';
-                        sync(); 
-                    }
+                if (!confirm(`Distribute ₵${amt.toFixed(2)} per node? No pool deduction until claim.`)) return;
+
+                verifiedNodes.forEach(n => {
+                    inserts.push({ user_id: n.id, amount: amt, entry_type: 'grace', description: `Vaulted: WITHERS GRACE` });
                 });
+            }
+
+            const { error } = await _gv.from('ledger').insert(inserts);
+            if(!error) { 
+                alert("DISTRIBUTION INITIALIZED"); 
+                document.getElementById('stableAmt').value = '';
+                document.getElementById('withersPct').value = '';
+                sync(); 
             }
         }
 
         async function deleteNode(id) {
-            showModal("Danger", "PERMANENTLY TERMINATE THIS NODE? This cannot be undone.", async () => {
+            if(confirm("PERMANENTLY TERMINATE THIS NODE? This cannot be undone.")) {
                 await _gv.from('profiles').delete().eq('id', id);
                 sync();
-            });
+            }
         }
 
         async function purgeSystem() {
-            showModal("Danger", "DANGER: WIPE ALL TRANSACTION LOGS? This clears the Global Ledger but keeps profiles.", async () => {
+            if(confirm("DANGER: WIPE ALL TRANSACTION LOGS? This clears the Global Ledger but keeps profiles.")) {
                 await _gv.from('ledger').delete().neq('id', '00000000-0000-0000-0000-000000000000');
                 sync();
-            });
+            }
         }
 
         async function injectSystemFunds() {
@@ -421,28 +361,15 @@
             await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: amt, entry_type: 'sli', description: `SYSTEM LIQUIDITY INJECTION (SLI)` }]);
             document.getElementById('injectAmt').value = '';
             sync();
-            showModal("Success", "Funds Injected");
         }
 
         async function approvePayout(ledgerId, userId, fullAmount) {
             const charge = fullAmount * 0.02;
-            const net = fullAmount - charge;
-            const node = allNodes.find(n => n.id === userId);
-            
-            showModal("Process Payout", `User Receives: ₵${net.toFixed(2)}\nService Charge: ₵${charge.toFixed(2)}`, async () => {
-                await _gv.from('ledger').update({ 
-                    description: `CLAIM PAID | NET: ₵${net.toFixed(2)} | FEE: ₵${charge.toFixed(2)}` 
-                }).eq('id', ledgerId);
-
-                await _gv.from('ledger').insert([{ 
-                    user_id: SYSTEM_ADMIN_ID, 
-                    amount: charge, 
-                    entry_type: 'service_charge', 
-                    description: `FEE FROM: ${node?.full_name || userId.slice(0,8)}` 
-                }]);
-
+            if(confirm(`Approve payout? Net will be sent, 2% (₵${charge.toFixed(2)}) stays in Pool.`)) {
+                await _gv.from('ledger').update({ description: 'CLAIM PAID & COMPLETED' }).eq('id', ledgerId);
+                await _gv.from('ledger').insert([{ user_id: SYSTEM_ADMIN_ID, amount: charge, entry_type: 'service_charge', description: `SERVICE CHARGE FROM WITHDRAWAL` }]);
                 sync();
-            });
+            }
         }
 
         async function verifyNodeManual() {
@@ -451,9 +378,6 @@
             if(data) {
                 await _gv.from('profiles').update({ is_verified: true }).eq('id', data.id);
                 sync();
-                showModal("Success", "Node Verified");
-            } else {
-                showModal("Error", "Node not found");
             }
         }
 
@@ -510,17 +434,10 @@
         async function logout() { await _gv.auth.signOut(); location.href = 'consoleenter.html'; }
 
         async function init() {
-            const { data: { session } } = await _gv.auth.getSession();
-            
-            if(!session) {
-                location.href = 'consoleenter.html';
-                return;
-            }
-            
-            document.getElementById('admin-session-email').innerText = `Session: ${session.user.email}`;
+            const { data: { user } } = await _gv.auth.getUser();
+            if(!user) location.href = 'consoleenter.html';
+            document.getElementById('admin-session-email').innerText = `Session: ${user.email}`;
             sync();
-            
-            // Realtime subscriptions
             _gv.channel('realtime').on('postgres_changes', { event: '*', schema: 'public' }, () => sync()).subscribe();
         }
         init();
